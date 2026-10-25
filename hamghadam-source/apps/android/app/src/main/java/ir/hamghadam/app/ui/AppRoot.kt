@@ -59,7 +59,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ir.hamghadam.app.AppViewModel
 import ir.hamghadam.app.EventDraft
@@ -70,14 +69,12 @@ import ir.hamghadam.app.data.ThemeMode
 import ir.hamghadam.app.domain.EventProjection
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.data.TaskEntity
-import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.PersianCalendar
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.toDraft
 import ir.hamghadam.app.ui.components.LocalCardPadding
 import ir.hamghadam.app.ui.components.softShadow
-import ir.hamghadam.app.ui.theme.HamghadamPalette
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 import ir.hamghadam.app.ui.theme.HamghadamTheme
 
@@ -635,7 +632,7 @@ private fun TaskActionSheet(
                 Text(due, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(10.dp))
-            SheetRow("✎", "ویرایش", "تاریخ، ساعت، لیست و یادداشت") { onEdit(task) }
+            SheetRow("✎", "ویرایش", "تاریخ، ساعت، لیست و یادداشت", onClick = { onEdit(task) })
             SheetRow("✓", if (task.isCompleted) "برگرداندن به کارها" else "انجام شد", null, onToggle)
             SheetRow("⧉", "ساخت نسخهٔ تازه", "یک کپی با همان مشخصات", onDuplicate)
             SheetRow("🚩", "مهم کن", "انتقال به بالای فهرست", { onPriority(TaskEntity.PRIORITY_HIGH) })
