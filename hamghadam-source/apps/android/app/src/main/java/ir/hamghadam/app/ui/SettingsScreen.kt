@@ -363,7 +363,7 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = "برنامه‌ریز فارسیِ آفلاین با تقویم شمسی، تعطیلات ۱۴۰۴ و ۱۴۰۵، تمرکز، عادت و ثبت سریع زبان طبیعی.",
+                    text = "برنامه‌ریز فارسیِ آفلاین با تقویم شمسی، مناسبت‌های ۱۴۰۴ و ۱۴۰۵، تمرکز، عادت، برچسب، تمپلیت و ثبت سریع زبان طبیعی.",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -380,7 +380,7 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "این نسخه به سرور وصل نمی‌شود؛ همگام‌سازی چنددستگاهی هنوز پیاده‌سازی نشده است.",
+                    text = "همه‌چیز آفلاین است؛ اتصال اختیاری تقویم گوگل فقط یک کش محلی می‌سازد و بدون آن هم همهٔ قابلیت‌ها کار می‌کنند.",
                     fontSize = 10.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

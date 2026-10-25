@@ -18,8 +18,8 @@ LUNAR_1405 = {(1,1),(1,2),(1,25),(3,6),(3,14),(4,3),(4,4),(5,13),(5,21),(5,22),(
 
 official_1404 = [
     (1, 1, "آغاز نوروز", "تحویل سال و آغاز جشن نوروز"),
+    (1, 1, "شهادت امام علی (ع) و شب قدر", "۲۱ رمضان ۱۴۴۶؛ هم‌زمان با نوروز"),
     (1, 2, "عید نوروز", "دومین روز نوروز"),
-    (1, 2, "شهادت امام علی (ع) و شب قدر", "بیست‌ویکم رمضان ۱۴۴۶"),
     (1, 3, "عید نوروز", "سومین روز نوروز"),
     (1, 4, "عید نوروز", "چهارمین روز نوروز"),
     (1, 11, "عید سعید فطر", "اول شوال ۱۴۴۶"),
@@ -29,7 +29,6 @@ official_1404 = [
     (2, 4, "شهادت امام جعفر صادق (ع)", "۲۵ شوال ۱۴۴۶"),
     (3, 14, "رحلت امام خمینی (ره)", "سالگرد ارتحال بنیان‌گذار جمهوری اسلامی"),
     (3, 15, "قیام ۱۵ خرداد", "سالگرد قیام ۱۵ خرداد ۱۳۴۲"),
-    (3, 15, "روز عرفه", "نهم ذی‌الحجه ۱۴۴۶"),
     (3, 16, "عید سعید قربان", "دهم ذی‌الحجه ۱۴۴۶"),
     (3, 24, "عید سعید غدیر خم", "هجدهم ذی‌الحجه ۱۴۴۶"),
     (4, 14, "تاسوعای حسینی", "نهم محرم ۱۴۴۷"),
@@ -83,16 +82,22 @@ official_1405 = [
 # مناسبت‌های فرهنگی/ملی (غیرتعطیل یا همراه با توضیح)
 cultural_common = [
     (1, 6, "زادروز زرتشت", "مناسبت فرهنگی زرتشتیان ایران", ANCIENT),
+    (2, 1, "روز بزرگداشت سعدی", "پاسداشت شیخ مصلح‌الدین سعدی", CULTURAL),
+    (2, 2, "روز زمین پاک", "مناسبت زیست‌محیطی", CULTURAL),
     (2, 10, "روز ملی خلیج فارس", "مناسبت ملی", CULTURAL),
     (2, 12, "روز معلم", "سالگرد شهادت مرتضی مطهری", CULTURAL),
     (2, 25, "روز بزرگداشت فردوسی", "پاسداشت سرایندهٔ شاهنامه", CULTURAL),
+    (2, 28, "روز بزرگداشت خیام", "پاسداشت عمر خیام نیشابوری", CULTURAL),
     (3, 20, "روز ملی صنایع دستی", "مناسبت فرهنگی", CULTURAL),
     (5, 17, "روز خبرنگار", "سالگرد شهادت محمود صارمی", CULTURAL),
     (6, 1, "روز پزشک", "زادروز ابوعلی سینا", CULTURAL),
+    (6, 4, "روز کارمند", "پاسداشت خدمت‌گزاران اداری", CULTURAL),
     (6, 5, "روز داروسازی", "زادروز زکریای رازی", CULTURAL),
     (7, 13, "جشن تیرگان", "جشن باستانی آب‌پاشان و آرش کمانگیر", ANCIENT),
+    (7, 16, "جشن مهرگان", "جشن باستانی مهر و دوستی", ANCIENT),
     (7, 20, "روز بزرگداشت حافظ", "پاسداشت خواجه شمس‌الدین حافظ", CULTURAL),
     (8, 7, "روز کوروش بزرگ", "مناسبت فرهنگی", ANCIENT),
+    (8, 13, "روز دانش‌آموز", "سالگرد ۱۳ آبان ۱۳۵۷", CULTURAL),
     (8, 24, "روز کتاب و کتابخوانی", "مناسبت فرهنگی", CULTURAL),
     (9, 16, "روز دانشجو", "سالگرد ۱۶ آذر ۱۳۳۲", CULTURAL),
     (9, 30, "شب یلدا", "بلندترین شب سال؛ جشن باستانی چله", ANCIENT),
@@ -102,6 +107,7 @@ cultural_common = [
     (12, 5, "روز مهندسی", "بزرگداشت خواجه نصیرالدین طوسی", CULTURAL),
     (12, 15, "روز درختکاری", "مناسبت زیست‌محیطی", CULTURAL),
     (12, 25, "روز بزرگداشت پروین اعتصامی", "مناسبت فرهنگی", CULTURAL),
+    (3, 15, "روز عرفه", "نهم ذی‌الحجه؛ روز نیایش", CULTURAL),
 ]
 
 def esfand_len(year):
@@ -122,20 +128,25 @@ def _solar_title(title):
 
 def build(year, official, lunar, extra_last_day=None):
     events = []
+    used = {}
+    def uid(prefix, m, d):
+        n = used.get((prefix, m, d), 0) + 1
+        used[(prefix, m, d)] = n
+        return f"{year}-{m:02d}-{d:02d}-{prefix}{n}"
     for m, d, title, desc in official:
-        events.append(dict(id=f"{year}-{m:02d}-{d:02d}-o", month=m, day=d, title=title,
+        events.append(dict(id=uid("o", m, d), month=m, day=d, title=title,
                            category="official", holiday=True, color=OFFICIAL,
                            description=desc,
                            approximate=(m, d) in lunar and not _solar_title(title),
                            lunar=(m, d) in lunar and not _solar_title(title)))
     for m, d, title, desc, color in cultural_common:
-        events.append(dict(id=f"{year}-{m:02d}-{d:02d}-c", month=m, day=d, title=title,
+        events.append(dict(id=uid("c", m, d), month=m, day=d, title=title,
                            category="cultural", holiday=False, color=color,
                            description=desc, approximate=False, lunar=False))
     month_len = esfand_len(year)
     tue = last_tuesday_of_year(year, month_len)
     j = persian.from_gregorian(tue.year, tue.month, tue.day)
-    events.append(dict(id=f"{year}-{j[1]:02d}-{j[2]:02d}-c-b", month=j[1], day=j[2],
+    events.append(dict(id=uid("c", j[1], j[2]) + "-b", month=j[1], day=j[2],
                        title="چهارشنبه‌سوری", category="cultural", holiday=False,
                        color=ANCIENT, description="جشن آتش و پایان سال",
                        approximate=False, lunar=False))

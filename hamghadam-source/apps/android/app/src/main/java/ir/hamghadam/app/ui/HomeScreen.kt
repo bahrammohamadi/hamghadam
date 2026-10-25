@@ -158,29 +158,32 @@ fun HomeScreen(
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FocusHeroCard(
-                    modifier = Modifier.weight(1.05f),
-                    done = doneToday,
-                    total = todayTasks.size,
-                    focusMinutes = focusMinutesToday,
-                    running = focusTimer.running,
-                    onStart = onOpenFocus,
-                )
-                QuickActionsCard(
-                    modifier = Modifier.weight(1f),
-                    onOpenTasks = onOpenTasks,
-                    onOpenFocus = onOpenFocus,
-                    onOpenHabits = onOpenHabits,
-                    onOpenTemplates = onOpenTemplates,
-                )
-            }
+            FocusHeroCard(
+                modifier = Modifier.fillMaxWidth(),
+                done = doneToday,
+                total = todayTasks.size,
+                focusMinutes = focusMinutesToday,
+                goalMinutes = settings.focusGoalMinutes,
+                running = focusTimer.running,
+                digits = digits,
+                onStart = onOpenFocus,
+            )
+        }
+
+        item {
+            QuickActionsCard(
+                onOpenTasks = onOpenTasks,
+                onOpenFocus = onOpenFocus,
+                onOpenHabits = onOpenHabits,
+                onOpenTemplates = onOpenTemplates,
+            )
         }
 
         item {
             DailyChallengeCard(
                 title = challenge.subtitle,
                 percent = challenge.percent,
+                digits = digits,
                 steps = challenge.steps.map { step -> Triple(step.title, step.label, step.isComplete) },
             )
         }
@@ -402,63 +405,75 @@ private fun FocusHeroCard(
     done: Int,
     total: Int,
     focusMinutes: Int,
+    goalMinutes: Int,
     running: Boolean,
+    digits: Boolean,
     onStart: () -> Unit,
 ) {
-    val progress = if (total <= 0) 0f else done.toFloat() / total.toFloat()
+    val progress = if (goalMinutes <= 0) 0f else (focusMinutes.toFloat() / goalMinutes.toFloat()).coerceIn(0f, 1f)
     Card(
         modifier = modifier,
         shape = CardRadius.card,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Text(
-                text = "تمرکز من",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                ProgressRing(
-                    progress = progress,
-                    size = 64.dp,
-                    strokeWidth = 6.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    track = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
-                ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ProgressRing(
+                progress = progress,
+                size = 72.dp,
+                strokeWidth = 7.dp,
+                color = MaterialTheme.colorScheme.primary,
+                track = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = PersianText.number((progress * 100).toInt()) + "٪",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = PersianText.number(focusMinutes) + " دقیقه",
+                        text = PersianText.number(focusMinutes, digits),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                     Text(
-                        text = "${PersianText.number(done)} از ${PersianText.number(total)} کار",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                        text = "دقیقه",
+                        fontSize = 8.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = if (running) "جلسه در جریان است…" else "یک بلوک تمرکز شروع کن",
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-            )
-            Spacer(Modifier.height(6.dp))
-            TextButton(onClick = onStart, contentPadding = PaddingValues(0.dp)) {
-                Text("شروع تمرکز", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "تمرکز من",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "${PersianText.number(done, digits)} از ${PersianText.number(total, digits)} کار امروز انجام شد",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                )
+                Text(
+                    text = if (running) "جلسه در جریان است…" else "هدف امروز: ${PersianText.number(goalMinutes, digits)} دقیقه",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
+                )
+                Spacer(Modifier.height(6.dp))
+                Button(
+                    onClick = onStart,
+                    shape = CardRadius.chip,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    modifier = Modifier.height(30.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                ) {
+                    Text(if (running) "ادامه" else "شروع تمرکز", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -466,28 +481,27 @@ private fun FocusHeroCard(
 
 @Composable
 private fun QuickActionsCard(
-    modifier: Modifier = Modifier,
     onOpenTasks: () -> Unit,
     onOpenFocus: () -> Unit,
     onOpenHabits: () -> Unit,
     onOpenTemplates: () -> Unit,
 ) {
-    HamghadamCard(modifier = modifier) {
+    HamghadamCard(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "دسترسی سریع",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            QuickAction(emoji = "📝", label = "کارها", tint = HamghadamPalette.Terracotta, onClick = onOpenTasks)
-            QuickAction(emoji = "🎯", label = "تمرکز", tint = HamghadamPalette.Violet, onClick = onOpenFocus)
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            QuickAction(emoji = "🌱", label = "عادت‌ها", tint = HamghadamPalette.Olive, onClick = onOpenHabits)
-            QuickAction(emoji = "🧩", label = "تمپلیت", tint = HamghadamPalette.Amber, onClick = onOpenTemplates)
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            QuickAction(emoji = "📝", label = "کارها", tint = HamghadamPalette.Terracotta, onClick = onOpenTasks, modifier = Modifier.weight(1f))
+            QuickAction(emoji = "🎯", label = "تمرکز", tint = HamghadamPalette.Violet, onClick = onOpenFocus, modifier = Modifier.weight(1f))
+            QuickAction(emoji = "🌱", label = "عادت‌ها", tint = HamghadamPalette.Olive, onClick = onOpenHabits, modifier = Modifier.weight(1f))
+            QuickAction(emoji = "🧩", label = "تمپلیت", tint = HamghadamPalette.Amber, onClick = onOpenTemplates, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -496,6 +510,7 @@ private fun QuickActionsCard(
 private fun DailyChallengeCard(
     title: String,
     percent: Int,
+    digits: Boolean,
     steps: List<Triple<String, String, Boolean>>,
 ) {
     val start = HamghadamPalette.Violet
@@ -513,7 +528,7 @@ private fun DailyChallengeCard(
                     Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
                 Text(
-                    text = "$percent٪",
+                    text = PersianText.number(percent, digits) + "٪",
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,

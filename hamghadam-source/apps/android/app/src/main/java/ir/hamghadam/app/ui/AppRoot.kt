@@ -5,8 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
@@ -130,27 +132,36 @@ fun AppRoot(viewModel: AppViewModel) {
 
             val draft = activeDraft
             when {
-                draft != null -> TaskEditorScreen(
-                    initial = draft,
-                    projects = projects,
-                    settings = settings,
-                    knownTags = knownTags,
-                    onSave = { saved ->
-                        viewModel.saveDraft(saved)
-                        activeDraft = null
-                    },
-                    onCancel = { activeDraft = null },
-                    onDelete = { toDelete ->
-                        viewModel.deleteDraft(toDelete)
-                        activeDraft = null
-                    },
-                    onSaveAsTemplate = { saved -> viewModel.saveDraftAsTemplate(saved) },
-                )
+                draft != null -> Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .systemBarsPadding()
+                        .imePadding(),
+                ) {
+                    TaskEditorScreen(
+                        initial = draft,
+                        projects = projects,
+                        settings = settings,
+                        knownTags = knownTags,
+                        onSave = { saved ->
+                            viewModel.saveDraft(saved)
+                            activeDraft = null
+                        },
+                        onCancel = { activeDraft = null },
+                        onDelete = { toDelete ->
+                            viewModel.deleteDraft(toDelete)
+                            activeDraft = null
+                        },
+                        onSaveAsTemplate = { saved -> viewModel.saveDraftAsTemplate(saved) },
+                    )
+                }
 
                 moreRoute != null -> Box(
                     Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
+                        .background(MaterialTheme.colorScheme.background)
+                        .systemBarsPadding(),
                 ) {
                     when (moreRoute) {
                         MoreRoute.HABITS -> HabitsScreen(

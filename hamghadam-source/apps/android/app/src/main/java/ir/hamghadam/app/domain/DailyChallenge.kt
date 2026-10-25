@@ -20,6 +20,8 @@ data class ChallengeStep(
 data class DailyChallenge(
     val steps: List<ChallengeStep>,
     val greeting: String,
+    /** True as soon as the user has any task, habit or focus minute today. */
+    val planned: Boolean = true,
 ) {
     val percent: Int
         get() {
@@ -32,7 +34,7 @@ data class DailyChallenge(
 
     val subtitle: String
         get() = when {
-            steps.isEmpty() -> "امروز هنوز برنامه‌ای نساخته‌ای"
+            steps.isEmpty() || !planned -> "امروز هنوز برنامه‌ای نساخته‌ای"
             isComplete -> "چالش امروز کامل شد؛ عالی بود"
             else -> "برنامهٔ تو برای امروز"
         }
@@ -83,6 +85,10 @@ object DailyChallengeCalculator {
                 )
             }
         }
-        return DailyChallenge(steps = steps, greeting = greeting)
+        return DailyChallenge(
+            steps = steps,
+            greeting = greeting,
+            planned = dueToday > 0 || habitsTotal > 0 || focusMinutesToday > 0,
+        )
     }
 }
