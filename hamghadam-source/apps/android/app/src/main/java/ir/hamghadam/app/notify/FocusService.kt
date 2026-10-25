@@ -1,5 +1,6 @@
 package ir.hamghadam.app.notify
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
@@ -116,6 +117,9 @@ class FocusService : android.app.Service() {
             .build()
     }
 
+    // The notification is the foreground-service notification; the call is
+    // already wrapped because the channel can be blocked by the user.
+    @SuppressLint("MissingPermission")
     private fun push(remaining: Int) {
         runCatching {
             NotificationManagerCompat.from(this).notify(Notifications.ID_FOCUS, build(remaining))

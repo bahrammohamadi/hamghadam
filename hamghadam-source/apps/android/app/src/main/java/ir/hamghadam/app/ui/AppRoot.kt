@@ -193,7 +193,7 @@ fun AppRoot(
             val todayHighlight = remember(personalEvents, googleEvents, settings.calendarSources, today) {
                 val year = today.year
                 val base = viewModel.eventCatalog.eventsForYear(year) +
-                    EventProjection.expandPersonal(personalEvents.map { it.toModel() }, year) +
+                    EventProjection.expandPersonal(personalEvents.mapNotNull { it.toModel() }, year) +
                     googleEvents.mapNotNull { it.toEvent() }
                 EventProjection.enabled(base, settings.calendarSources)
                     .firstOrNull { it.date == today }?.title
@@ -441,7 +441,8 @@ fun AppRoot(
                                 AppTab.MORE -> MoreScreen(
                                     settings = settings,
                                     profile = activeProfile,
-                                    profileCount = profiles.size,
+                                    // +1 for the implicit first account, which is not stored.
+                                    profileCount = profiles.size + 1,
                                     openTasks = tasks.count { !it.isCompleted },
                                     eventCount = personalEvents.size + googleEvents.size,
                                     focusSessions = focusSessions.count { it.completed },

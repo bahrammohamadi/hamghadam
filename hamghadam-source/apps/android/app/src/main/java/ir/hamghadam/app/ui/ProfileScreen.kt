@@ -547,7 +547,8 @@ fun ProfileScreen(
                 showBackupPassword = false
                 if (backupMode == "export") {
                     pendingExportPassword = backupPassword
-                    exportLauncher.launch("hamghadam-${active.name}-backup.json")
+                    val safeName = active.name.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    exportLauncher.launch("hamghadam-$safeName-backup.json")
                 } else {
                     importLauncher.launch(
                         arrayOf("application/json", "text/plain", "application/octet-stream"),

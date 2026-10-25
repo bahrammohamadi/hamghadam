@@ -26,14 +26,21 @@ data class PersonalEventEntity(
     val updatedAtEpochMillis: Long = System.currentTimeMillis(),
     val profileId: String = "",
 ) {
-    fun toModel(): PersonalEvent = PersonalEvent(
-        id = id,
-        title = title,
-        date = JalaliDate.fromEpochDay(epochDay),
-        colorArgb = colorArgb,
-        yearlyRepeat = yearlyRepeat,
-        notes = notes,
-    )
+    /** Null when the stored epoch day is outside the supported Jalali range. */
+    val dateOrNull: JalaliDate?
+        get() = runCatching { JalaliDate.fromEpochDay(epochDay) }.getOrNull()
+
+    fun toModel(): PersonalEvent? {
+        val date = dateOrNull ?: return null
+        return PersonalEvent(
+            id = id,
+            title = title,
+            date = date,
+            colorArgb = colorArgb,
+            yearlyRepeat = yearlyRepeat,
+            notes = notes,
+        )
+    }
 }
 
 /** Cached copy of Google Calendar events; never a source of truth. */

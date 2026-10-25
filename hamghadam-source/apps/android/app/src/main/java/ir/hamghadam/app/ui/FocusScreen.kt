@@ -266,7 +266,8 @@ fun FocusScreen(
                 ) {
                     for (day in week) {
                         val barHeight = if (maxMinutes <= 0) 0f else (day.minutes.toFloat() / maxMinutes)
-                        val date = JalaliDate.fromEpochDay(day.epochDay)
+                        val date = runCatching { JalaliDate.fromEpochDay(day.epochDay) }.getOrNull()
+                            ?: today
                         Column(
                             modifier = Modifier.weight(1f),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -313,7 +314,8 @@ fun FocusScreen(
             }
         } else {
             items(sessions.take(6), key = { it.id }) { session ->
-                val date = JalaliDate.fromEpochDay(session.epochDay)
+                val date = runCatching { JalaliDate.fromEpochDay(session.epochDay) }.getOrNull()
+                    ?: today
                 HamghadamCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(

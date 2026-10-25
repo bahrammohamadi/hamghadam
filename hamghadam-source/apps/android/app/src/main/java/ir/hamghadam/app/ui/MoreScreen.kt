@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.hamghadam.app.BuildConfig
 import ir.hamghadam.app.data.AppSettings
 import ir.hamghadam.app.data.LocalProfile
 import ir.hamghadam.app.domain.PersianText
@@ -103,7 +104,7 @@ fun MoreScreen(
                         Column(Modifier.weight(1f)) {
                             Text(profile.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "${PersianText.number(profileCount, digits)} حساب • کاملاً آفلاین • نسخهٔ ۰.۶.۰",
+                                text = "${PersianText.number(profileCount, digits)} حساب • کاملاً آفلاین • نسخهٔ ${if (digits) PersianText.toPersianDigits(BuildConfig.VERSION_NAME) else BuildConfig.VERSION_NAME}",
                                 color = Color.White.copy(alpha = 0.82f),
                                 fontSize = 11.sp,
                             )

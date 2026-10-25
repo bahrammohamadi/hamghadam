@@ -34,7 +34,11 @@ android {
 
     kotlinOptions { jvmTarget = "17" }
 
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        // BuildConfig.VERSION_NAME keeps the in-app version label in sync.
+        buildConfig = true
+    }
 
     testOptions {
         unitTests {

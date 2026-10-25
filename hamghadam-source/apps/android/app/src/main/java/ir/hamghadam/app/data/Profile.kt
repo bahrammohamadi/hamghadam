@@ -51,7 +51,9 @@ class ProfileStore(context: Context) {
     val profiles: StateFlow<List<LocalProfile>> = _profiles.asStateFlow()
 
     private val _activeId = MutableStateFlow(
-        prefs.getString(KEY_ACTIVE, DEFAULT_PROFILE_ID) ?: DEFAULT_PROFILE_ID,
+        runCatching { prefs.getString(KEY_ACTIVE, DEFAULT_PROFILE_ID) }
+            .getOrNull()
+            ?: DEFAULT_PROFILE_ID,
     )
     val activeId: StateFlow<String> = _activeId.asStateFlow()
 
@@ -104,8 +106,9 @@ class ProfileStore(context: Context) {
         prefs.edit().putString(KEY_PROFILES, ProfileCodec.encode(list)).apply()
     }
 
-    private fun read(): List<LocalProfile> =
+    private fun read(): List<LocalProfile> = runCatching {
         ProfileCodec.decode(prefs.getString(KEY_PROFILES, null))
+    }.getOrDefault(emptyList())
 
     companion object {
         private const val KEY_PROFILES = "profiles"

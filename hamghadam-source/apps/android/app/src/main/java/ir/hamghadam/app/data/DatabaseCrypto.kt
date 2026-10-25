@@ -157,7 +157,10 @@ object DatabaseCrypto {
             )
             val ok = runCatching {
                 probe.rawQuery("PRAGMA user_version", null).use { cursor ->
-                    cursor.moveToFirst() && cursor.getInt(0) >= 4
+                    // 2 is the oldest schema a released build can still carry;
+                    // requiring 4 (the current version) rejected 0.4/0.5 files
+                    // and left them unencrypted forever.
+                    cursor.moveToFirst() && cursor.getInt(0) >= 2
                 }
             }.getOrDefault(false)
             probe.close()

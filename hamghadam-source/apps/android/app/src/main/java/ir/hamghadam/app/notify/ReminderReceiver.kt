@@ -1,5 +1,6 @@
 package ir.hamghadam.app.notify
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -49,6 +50,9 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
+    // POST_NOTIFICATIONS is checked by `hasNotificationPermission()` above and
+    // every notify() call is wrapped in runCatching; lint cannot see either.
+    @SuppressLint("MissingPermission")
     private fun showNotification(context: Context, taskId: String, title: String, dueLabel: String) {
         if (!hasNotificationPermission(context)) return
         Notifications.ensureChannels(context)
@@ -126,6 +130,7 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .build()
 
+    @SuppressLint("MissingPermission")
     private fun snooze(context: Context, taskId: String, intent: Intent) {
         val title = intent.getStringExtra(EXTRA_TASK_TITLE).orEmpty()
         val manager = NotificationManagerCompat.from(context)

@@ -218,31 +218,48 @@ class GoogleTokenStore(context: Context) {
         context.getSharedPreferences("$FILE_NAME.plain", Context.MODE_PRIVATE)
     }
 
-    fun isConnected(): Boolean = !prefs.getString(KEY_ACCESS, null).isNullOrBlank()
+    /**
+     * EncryptedSharedPreferences throws (not returns null) when the Keystore
+     * key was invalidated. This store is read while the ViewModel is built, so
+     * an unguarded read used to close the app before the first frame; every
+     * access is now best-effort and falls back to "not connected".
+     */
+    private fun <T> read(fallback: T, block: SharedPreferences.() -> T): T =
+        runCatching { prefs.block() }.getOrDefault(fallback)
 
-    fun accessToken(): String? = prefs.getString(KEY_ACCESS, null)
+    fun isConnected(): Boolean = !read<String?>(null) { getString(KEY_ACCESS, null) }.isNullOrBlank()
 
-    fun refreshToken(): String? = prefs.getString(KEY_REFRESH, null)
+    fun accessToken(): String? = read<String?>(null) { getString(KEY_ACCESS, null) }
 
-    fun expiresAtMillis(): Long = prefs.getLong(KEY_EXPIRES, 0L)
+    fun refreshToken(): String? = read<String?>(null) { getString(KEY_REFRESH, null) }
+
+    fun expiresAtMillis(): Long = read(0L) { getLong(KEY_EXPIRES, 0L) }
 
     fun save(token: GoogleOAuth.Token) {
-        prefs.edit()
-            .putString(KEY_ACCESS, token.accessToken)
-            .putString(KEY_REFRESH, token.refreshToken ?: refreshToken())
-            .putLong(KEY_EXPIRES, token.expiresAtMillis)
-            .apply()
+        runCatching {
+            prefs.edit()
+                .putString(KEY_ACCESS, token.accessToken)
+                .putString(KEY_REFRESH, token.refreshToken ?: refreshToken())
+                .putLong(KEY_EXPIRES, token.expiresAtMillis)
+                .apply()
+        }
     }
 
-    fun clear() = prefs.edit().clear().apply()
+    fun clear() {
+        runCatching { prefs.edit().clear().apply() }
+    }
 
-    fun lastSyncMillis(): Long = prefs.getLong(KEY_LAST_SYNC, 0L)
+    fun lastSyncMillis(): Long = read(0L) { getLong(KEY_LAST_SYNC, 0L) }
 
-    fun setLastSync(millis: Long) = prefs.edit().putLong(KEY_LAST_SYNC, millis).apply()
+    fun setLastSync(millis: Long) {
+        runCatching { prefs.edit().putLong(KEY_LAST_SYNC, millis).apply() }
+    }
 
-    fun accountLabel(): String = prefs.getString(KEY_ACCOUNT, "").orEmpty()
+    fun accountLabel(): String = read("") { getString(KEY_ACCOUNT, "") }.orEmpty()
 
-    fun setAccountLabel(label: String) = prefs.edit().putString(KEY_ACCOUNT, label).apply()
+    fun setAccountLabel(label: String) {
+        runCatching { prefs.edit().putString(KEY_ACCOUNT, label).apply() }
+    }
 
     /**
      * Returns a usable access token, refreshing it when it is about to expire.

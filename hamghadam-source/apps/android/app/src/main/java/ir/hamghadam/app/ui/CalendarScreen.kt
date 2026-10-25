@@ -103,7 +103,7 @@ fun CalendarScreen(
     val selected = JalaliDate.fromEpochDay(selectedEpoch)
     val grid = remember(anchor) { PersianCalendar.monthGrid(anchor) }
 
-    val personalModels = remember(personalEvents) { personalEvents.map { it.toModel() } }
+    val personalModels = remember(personalEvents) { personalEvents.mapNotNull { it.toModel() } }
     val events = remember(catalog, personalModels, googleEvents, anchor.year, settings.calendarSources) {
         val google = googleEvents.mapNotNull { it.toEvent() }
         val base = catalog.eventsForYear(anchor.year) +

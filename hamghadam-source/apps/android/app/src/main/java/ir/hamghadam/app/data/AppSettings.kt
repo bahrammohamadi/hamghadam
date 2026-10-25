@@ -106,26 +106,41 @@ class SettingsStore(context: Context) {
         _settings.value = read()
     }
 
+    // A value written with a different type by an older build makes
+    // SharedPreferences throw ClassCastException. Read defensively so a stale
+    // preference can never stop the app from starting (audit C-06).
+    private fun readInt(key: String, fallback: Int): Int =
+        runCatching { prefs.getInt(key, fallback) }.getOrDefault(fallback)
+
+    private fun readBool(key: String, fallback: Boolean): Boolean =
+        runCatching { prefs.getBoolean(key, fallback) }.getOrDefault(fallback)
+
+    private fun readString(key: String, fallback: String?): String? =
+        runCatching { prefs.getString(key, fallback) }.getOrDefault(fallback)
+
+    private fun readStringSet(key: String, fallback: Set<String>): Set<String>? =
+        runCatching { prefs.getStringSet(key, fallback) }.getOrDefault(fallback)
+
     private fun read(): AppSettings {
-        val theme = prefs.getString(KEY_THEME, ThemeMode.SYSTEM.name)
+        val theme = readString(KEY_THEME, ThemeMode.SYSTEM.name)
             ?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
             ?: ThemeMode.SYSTEM
-        val reminder = prefs.getInt(KEY_REMINDER, ReminderOptions.AT_TIME)
-        val sources = prefs.getStringSet(KEY_SOURCES, CalendarSource.defaultEnabled)
+        val reminder = readInt(KEY_REMINDER, ReminderOptions.AT_TIME)
+        val sources = readStringSet(KEY_SOURCES, CalendarSource.defaultEnabled)
             ?.let { CalendarSource.sanitizeSources(it) }
             ?: CalendarSource.defaultEnabled
         return AppSettings(
             themeMode = theme,
-            persianDigits = prefs.getBoolean(KEY_DIGITS, true),
+            persianDigits = readBool(KEY_DIGITS, true),
             defaultReminderMinutes = if (reminder == NO_REMINDER) null else reminder,
             calendarSources = sources,
-            focusMinutes = prefs.getInt(KEY_FOCUS_MINUTES, 25),
-            breakMinutes = prefs.getInt(KEY_BREAK_MINUTES, 5),
-            focusGoalMinutes = prefs.getInt(KEY_FOCUS_GOAL, 50),
-            googleClientId = prefs.getString(KEY_GOOGLE_CLIENT, "").orEmpty(),
-            googleConnected = prefs.getBoolean(KEY_GOOGLE_CONNECTED, false),
-            accent = AccentColor.fromName(prefs.getString(KEY_ACCENT, null)),
-            compact = prefs.getBoolean(KEY_COMPACT, false),
+            focusMinutes = readInt(KEY_FOCUS_MINUTES, 25),
+            breakMinutes = readInt(KEY_BREAK_MINUTES, 5),
+            focusGoalMinutes = readInt(KEY_FOCUS_GOAL, 50),
+            googleClientId = readString(KEY_GOOGLE_CLIENT, "").orEmpty(),
+            googleConnected = readBool(KEY_GOOGLE_CONNECTED, false),
+            accent = AccentColor.fromName(readString(KEY_ACCENT, null)),
+            compact = readBool(KEY_COMPACT, false),
         )
     }
 

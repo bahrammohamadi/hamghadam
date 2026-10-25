@@ -22,16 +22,16 @@ class SecurityStore(context: Context) {
         .getSharedPreferences("hamghadam.security", Context.MODE_PRIVATE)
 
     val isPinSet: Boolean
-        get() = !prefs.getString(KEY_HASH, null).isNullOrBlank()
+        get() = !runCatching { prefs.getString(KEY_HASH, null) }.getOrNull().isNullOrBlank()
 
     val lockAfterMinutes: Int
-        get() = prefs.getInt(KEY_TIMEOUT, 1)
+        get() = runCatching { prefs.getInt(KEY_TIMEOUT, 1) }.getOrDefault(1)
 
     val secureScreen: Boolean
-        get() = prefs.getBoolean(KEY_SECURE, false)
+        get() = runCatching { prefs.getBoolean(KEY_SECURE, false) }.getOrDefault(false)
 
     val biometricEnabled: Boolean
-        get() = prefs.getBoolean(KEY_BIOMETRIC, false)
+        get() = runCatching { prefs.getBoolean(KEY_BIOMETRIC, false) }.getOrDefault(false)
 
     fun setPin(pin: String) {
         val normalized = normalizePin(pin)
@@ -46,8 +46,8 @@ class SecurityStore(context: Context) {
     }
 
     fun verify(pin: String): Boolean {
-        val saltRaw = prefs.getString(KEY_SALT, null) ?: return false
-        val hashRaw = prefs.getString(KEY_HASH, null) ?: return false
+        val saltRaw = runCatching { prefs.getString(KEY_SALT, null) }.getOrNull() ?: return false
+        val hashRaw = runCatching { prefs.getString(KEY_HASH, null) }.getOrNull() ?: return false
         val salt = runCatching { Base64.decode(saltRaw, Base64.NO_WRAP) }.getOrNull() ?: return false
         val expected = runCatching { Base64.decode(hashRaw, Base64.NO_WRAP) }.getOrNull() ?: return false
         return PinHasher.verify(normalizePin(pin), salt, expected)
@@ -76,13 +76,13 @@ class SecurityStore(context: Context) {
 
     /** Seconds the user still has to wait after too many wrong PINs. */
     fun blockedForSeconds(): Long {
-        val until = prefs.getLong(KEY_BLOCKED_UNTIL, 0L)
+        val until = runCatching { prefs.getLong(KEY_BLOCKED_UNTIL, 0L) }.getOrDefault(0L)
         val remaining = until - System.currentTimeMillis()
         return if (remaining > 0) remaining / 1000 + 1 else 0
     }
 
     fun registerFailure(): Int {
-        val failures = prefs.getInt(KEY_FAILURES, 0) + 1
+        val failures = runCatching { prefs.getInt(KEY_FAILURES, 0) }.getOrDefault(0) + 1
         val delaySeconds = PinHasher.lockoutSeconds(failures)
         prefs.edit()
             .putInt(KEY_FAILURES, failures)
@@ -95,7 +95,7 @@ class SecurityStore(context: Context) {
         prefs.edit().putInt(KEY_FAILURES, 0).putLong(KEY_BLOCKED_UNTIL, 0L).apply()
     }
 
-    fun failureCount(): Int = prefs.getInt(KEY_FAILURES, 0)
+    fun failureCount(): Int = runCatching { prefs.getInt(KEY_FAILURES, 0) }.getOrDefault(0)
 
     private companion object {
         const val KEY_HASH = "pin_hash"

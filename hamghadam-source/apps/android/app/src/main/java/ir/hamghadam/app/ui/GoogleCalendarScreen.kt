@@ -210,7 +210,10 @@ fun GoogleCalendarScreen(
             }
         } else {
             items(events.take(8), key = { it.id }) { event ->
-                val date = JalaliDate.fromEpochDay(event.epochDay)
+                // Guard against a corrupt cached row; one bad event must not
+                // close the screen (audit C-07).
+                val date = runCatching { JalaliDate.fromEpochDay(event.epochDay) }.getOrNull()
+                    ?: return@items
                 HamghadamCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).background(Color(event.colorArgb), CircleShape))

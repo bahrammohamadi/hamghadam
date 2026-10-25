@@ -163,7 +163,9 @@ fun CalendarSettingsScreen(
             }
         } else {
             items(personalEvents, key = { it.id }) { event ->
-                val date = JalaliDate.fromEpochDay(event.epochDay)
+                // A backup written by a different tool can carry an impossible
+                // day; skip the row instead of crashing the whole screen (C-07).
+                val date = event.dateOrNull ?: return@items
                 HamghadamCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
