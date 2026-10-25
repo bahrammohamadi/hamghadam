@@ -167,6 +167,9 @@ APK="app/build/outputs/apk/debug/app-debug.apk"
 [ -f "$APK" ] || die "فایل APK ساخته نشد: $APK"
 ls -lh "$APK" || true
 APK_SIZE=$(wc -c < "$APK" | tr -d ' ')
+APK_SHA=$( (command -v sha256sum >/dev/null 2>&1 && sha256sum "$APK") || (command -v shasum >/dev/null 2>&1 && shasum -a 256 "$APK") | cut -d' ' -f1 )
+APK_SHA="${APK_SHA:-unknown}"
+notice "APK sha256=${APK_SHA}"
 say "بررسی محتوای APK"
 [ "$APK_SIZE" -gt 1000000 ] || die "حجم APK غیرعادی کم است: $APK_SIZE بایت"
 
@@ -223,6 +226,7 @@ if [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
 - شناسهٔ بسته: \`ir.hamghadam.app\` — نسخهٔ ${VERSION_NAME} (versionCode ${VERSION_CODE})
 - حداقل اندروید: 8.0 (API 26)
 - حجم: \`${APK_SIZE}\` بایت
+- اثر انگشت sha256: \`${APK_SHA}\`
 - دادهٔ مناسبت‌ها: ۱۴۰۴ و ۱۴۰۵ (به‌صورت آفلاین داخل APK)
 - امضا: debug (برای تست، بدون امضای انتشار)
 
