@@ -199,6 +199,14 @@ if [ -f "$API_DIR/package.json" ]; then
     fi
 fi
 
+# آزمون اسکریپت استقرار روی سرور جعلی (بدون شبکه، بدون راز واقعی).
+DEPLOY_TEST="$REPO_ROOT/hamghadam-source/services/deploy/selftest.sh"
+if [ -f "$DEPLOY_TEST" ]; then
+    if ! bash "$DEPLOY_TEST" 2>&1 | tee -a "$LOG_FILE"; then
+        die_with_log "آزمون اسکریپت استقرار شکست خورد (مرحله: deploy-selftest)"
+    fi
+fi
+
 # ---------------------------------------------------------------- Android Lint
 say "Android Lint (دروازهٔ خطاهای کشنده)"
 # abortOnError=false در build.gradle.kts است؛ خطاهای Fatal همچنان task را

@@ -9,3 +9,6 @@ hamghadam-source/assets-cut2/
 .env
 .env.*
 !.env.example
+
+# Deploy output (local values, never committed)
+.env.local

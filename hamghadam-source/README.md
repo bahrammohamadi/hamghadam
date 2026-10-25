@@ -58,6 +58,7 @@ hamghadam-source/
 ├─ tools/generate-events.py          بازتولید فایل‌های مناسبت‌ها از فهرست منابع
 ├─ services/api/                    سرورلس اختیاری (Vercel، Node، بدون وابستگی): health + پیشنهاد ابزارهای دستیار، ۲۱ تست
 ├─ services/supabase/migrations/    اسکیمای Postgres + RLS برای سرور اختیاری (اجرا‌نشده)
+├─ services/deploy/                 اسکریپت استقرار یک‌فرمانی + سرور جعلی و آزمون خودکار آن
 └─ services/api/openapi.yaml        قرارداد OpenAPI همان API
 ```
 
