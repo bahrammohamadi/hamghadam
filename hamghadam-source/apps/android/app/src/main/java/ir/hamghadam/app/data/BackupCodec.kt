@@ -8,6 +8,9 @@ data class BackupPayload(
     val projects: List<ProjectEntity> = emptyList(),
     val habits: List<HabitEntity> = emptyList(),
     val habitLogs: List<HabitLogEntity> = emptyList(),
+    val personalEvents: List<PersonalEventEntity> = emptyList(),
+    val templates: List<TemplateEntity> = emptyList(),
+    val focusSessions: List<FocusSessionEntity> = emptyList(),
     val exportedAtEpochMillis: Long = System.currentTimeMillis(),
 )
 
@@ -16,17 +19,23 @@ data class ImportSummary(
     val projects: Int,
     val habits: Int,
     val habitLogs: Int,
+    val events: Int = 0,
+    val templates: Int = 0,
+    val focusSessions: Int = 0,
     val exportedAtEpochMillis: Long?,
 )
 
 /**
  * Versioned JSON backup format. It is deliberately readable: a user can open the
  * file, and a future server importer can reuse the same field names.
+ *
+ * v1 covered tasks/projects/habits; v2 adds tags, personal events, user
+ * templates and focus sessions. Reading a v1 file still works.
  */
 object BackupCodec {
 
     const val FORMAT = "hamghadam-backup"
-    const val VERSION = 1
+    const val VERSION = 2
 
     fun encode(payload: BackupPayload): String = SimpleJson.encode(
         mapOf(
@@ -53,6 +62,7 @@ object BackupCodec {
                     "priority" to task.priority,
                     "repeat" to task.repeatRule,
                     "reminderMinutesBefore" to task.reminderMinutesBefore,
+                    "tags" to task.tags,
                     "completedAt" to task.completedAtEpochMillis,
                     "createdAt" to task.createdAtEpochMillis,
                     "updatedAt" to task.updatedAtEpochMillis,
@@ -73,6 +83,42 @@ object BackupCodec {
                     "habitId" to log.habitId,
                     "epochDay" to log.epochDay,
                     "doneAt" to log.doneAtEpochMillis,
+                )
+            },
+            "personalEvents" to payload.personalEvents.map { event ->
+                mapOf(
+                    "id" to event.id,
+                    "title" to event.title,
+                    "epochDay" to event.epochDay,
+                    "colorArgb" to event.colorArgb,
+                    "yearlyRepeat" to event.yearlyRepeat,
+                    "notes" to event.notes,
+                    "createdAt" to event.createdAtEpochMillis,
+                    "updatedAt" to event.updatedAtEpochMillis,
+                )
+            },
+            "templates" to payload.templates.map { template ->
+                mapOf(
+                    "id" to template.id,
+                    "name" to template.name,
+                    "title" to template.title,
+                    "notes" to template.notes,
+                    "priority" to template.priority,
+                    "minuteOfDay" to template.minuteOfDay,
+                    "tags" to template.tagCsv,
+                    "projectId" to template.projectId,
+                    "builtin" to template.builtin,
+                    "createdAt" to template.createdAtEpochMillis,
+                )
+            },
+            "focusSessions" to payload.focusSessions.map { session ->
+                mapOf(
+                    "id" to session.id,
+                    "taskId" to session.taskId,
+                    "epochDay" to session.epochDay,
+                    "seconds" to session.seconds,
+                    "completed" to session.completed,
+                    "startedAt" to session.startedAtEpochMillis,
                 )
             },
         ),
@@ -111,6 +157,7 @@ object BackupCodec {
                 priority = (entry["priority"] as? Number)?.toInt() ?: TaskEntity.PRIORITY_NORMAL,
                 repeatRule = entry.string("repeat") ?: "NONE",
                 reminderMinutesBefore = (entry["reminderMinutesBefore"] as? Number)?.toInt(),
+                tags = entry.string("tags").orEmpty(),
                 completedAtEpochMillis = entry.long("completedAt"),
                 createdAtEpochMillis = entry.long("createdAt") ?: 0L,
                 updatedAtEpochMillis = entry.long("updatedAt") ?: 0L,
@@ -141,11 +188,65 @@ object BackupCodec {
             )
         }
 
+        val personalEvents = (root["personalEvents"] as? List<*>).orEmpty().mapNotNull { raw ->
+            val entry = raw as? Map<*, *> ?: return@mapNotNull null
+            val id = entry.string("id") ?: return@mapNotNull null
+            val title = entry.string("title") ?: return@mapNotNull null
+            val epochDay = entry.long("epochDay") ?: return@mapNotNull null
+            PersonalEventEntity(
+                id = id,
+                title = title,
+                epochDay = epochDay,
+                colorArgb = (entry["colorArgb"] as? Number)?.toInt() ?: 0xFF6C5CE7.toInt(),
+                yearlyRepeat = entry["yearlyRepeat"] as? Boolean ?: false,
+                notes = entry.string("notes").orEmpty(),
+                createdAtEpochMillis = entry.long("createdAt") ?: 0L,
+                updatedAtEpochMillis = entry.long("updatedAt") ?: 0L,
+            )
+        }.filter { it.title.isNotBlank() }
+
+        val templates = (root["templates"] as? List<*>).orEmpty().mapNotNull { raw ->
+            val entry = raw as? Map<*, *> ?: return@mapNotNull null
+            val id = entry.string("id") ?: return@mapNotNull null
+            val name = entry.string("name") ?: return@mapNotNull null
+            val title = entry.string("title") ?: return@mapNotNull null
+            TemplateEntity(
+                id = id,
+                name = name,
+                title = title,
+                notes = entry.string("notes").orEmpty(),
+                priority = (entry["priority"] as? Number)?.toInt() ?: TaskEntity.PRIORITY_NORMAL,
+                minuteOfDay = (entry["minuteOfDay"] as? Number)?.toInt(),
+                tagCsv = entry.string("tags").orEmpty(),
+                projectId = entry.string("projectId"),
+                builtin = entry["builtin"] as? Boolean ?: false,
+                createdAtEpochMillis = entry.long("createdAt") ?: 0L,
+            )
+        }.filter { it.name.isNotBlank() && it.title.isNotBlank() }
+
+        val focusSessions = (root["focusSessions"] as? List<*>).orEmpty().mapNotNull { raw ->
+            val entry = raw as? Map<*, *> ?: return@mapNotNull null
+            val id = entry.string("id") ?: return@mapNotNull null
+            val epochDay = entry.long("epochDay") ?: return@mapNotNull null
+            val seconds = (entry["seconds"] as? Number)?.toInt() ?: return@mapNotNull null
+            FocusSessionEntity(
+                id = id,
+                taskId = entry.string("taskId"),
+                epochDay = epochDay,
+                seconds = seconds,
+                completed = entry["completed"] as? Boolean ?: true,
+                startedAtEpochMillis = entry.long("startedAt") ?: 0L,
+            )
+        }
+
         return BackupPayload(
             tasks = tasks,
             projects = projects,
             habits = habits,
             habitLogs = habitLogs,
+            personalEvents = personalEvents,
+            templates = templates,
+            focusSessions = focusSessions,
             exportedAtEpochMillis = (root["exportedAt"] as? Number)?.toLong() ?: 0L,
         )
     }
@@ -156,6 +257,9 @@ object BackupCodec {
         projects = payload.projects.size,
         habits = payload.habits.size,
         habitLogs = payload.habitLogs.size,
+        events = payload.personalEvents.size,
+        templates = payload.templates.size,
+        focusSessions = payload.focusSessions.size,
         exportedAtEpochMillis = payload.exportedAtEpochMillis.takeIf { it > 0 },
     )
 

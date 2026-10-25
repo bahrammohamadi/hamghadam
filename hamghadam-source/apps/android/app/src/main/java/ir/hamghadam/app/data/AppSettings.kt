@@ -1,6 +1,7 @@
 package ir.hamghadam.app.data
 
 import android.content.Context
+import ir.hamghadam.app.domain.CalendarSource
 import ir.hamghadam.app.domain.ReminderOptions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,14 @@ data class AppSettings(
     val persianDigits: Boolean = true,
     /** Reminder applied to new tasks that have a date; null means no reminder. */
     val defaultReminderMinutes: Int? = ReminderOptions.AT_TIME,
+    /** Which event sources are drawn in the month view. */
+    val calendarSources: Set<String> = CalendarSource.defaultEnabled,
+    val focusMinutes: Int = 25,
+    val breakMinutes: Int = 5,
+    val focusGoalMinutes: Int = 50,
+    /** OAuth client id typed by the user; empty means Google sync is off. */
+    val googleClientId: String = "",
+    val googleConnected: Boolean = false,
 )
 
 /**
@@ -31,16 +40,54 @@ class SettingsStore(context: Context) {
 
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putString(KEY_THEME, mode.name).apply()
-        _settings.value = read()
+        refresh()
     }
 
     fun setPersianDigits(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_DIGITS, enabled).apply()
-        _settings.value = read()
+        refresh()
     }
 
     fun setDefaultReminder(minutes: Int?) {
         prefs.edit().putInt(KEY_REMINDER, minutes ?: NO_REMINDER).apply()
+        refresh()
+    }
+
+    fun setCalendarSource(source: CalendarSource, enabled: Boolean) {
+        val current = read().calendarSources.toMutableSet()
+        if (enabled) current += source.id else current -= source.id
+        // At least one source stays on so the calendar is never inexplicably empty.
+        val safe = if (current.isEmpty()) CalendarSource.defaultEnabled else current
+        prefs.edit().putStringSet(KEY_SOURCES, safe).apply()
+        refresh()
+    }
+
+    fun setFocusMinutes(minutes: Int) {
+        prefs.edit().putInt(KEY_FOCUS_MINUTES, minutes.coerceIn(5, 120)).apply()
+        refresh()
+    }
+
+    fun setBreakMinutes(minutes: Int) {
+        prefs.edit().putInt(KEY_BREAK_MINUTES, minutes.coerceIn(1, 30)).apply()
+        refresh()
+    }
+
+    fun setFocusGoalMinutes(minutes: Int) {
+        prefs.edit().putInt(KEY_FOCUS_GOAL, minutes.coerceIn(10, 600)).apply()
+        refresh()
+    }
+
+    fun setGoogleClientId(clientId: String) {
+        prefs.edit().putString(KEY_GOOGLE_CLIENT, clientId.trim()).apply()
+        refresh()
+    }
+
+    fun setGoogleConnected(connected: Boolean) {
+        prefs.edit().putBoolean(KEY_GOOGLE_CONNECTED, connected).apply()
+        refresh()
+    }
+
+    private fun refresh() {
         _settings.value = read()
     }
 
@@ -49,18 +96,33 @@ class SettingsStore(context: Context) {
             ?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } }
             ?: ThemeMode.SYSTEM
         val reminder = prefs.getInt(KEY_REMINDER, ReminderOptions.AT_TIME)
+        val sources = prefs.getStringSet(KEY_SOURCES, CalendarSource.defaultEnabled)
+            ?.let { CalendarSource.sanitizeSources(it) }
+            ?: CalendarSource.defaultEnabled
         return AppSettings(
             themeMode = theme,
             persianDigits = prefs.getBoolean(KEY_DIGITS, true),
             defaultReminderMinutes = if (reminder == NO_REMINDER) null else reminder,
+            calendarSources = sources,
+            focusMinutes = prefs.getInt(KEY_FOCUS_MINUTES, 25),
+            breakMinutes = prefs.getInt(KEY_BREAK_MINUTES, 5),
+            focusGoalMinutes = prefs.getInt(KEY_FOCUS_GOAL, 50),
+            googleClientId = prefs.getString(KEY_GOOGLE_CLIENT, "").orEmpty(),
+            googleConnected = prefs.getBoolean(KEY_GOOGLE_CONNECTED, false),
         )
     }
 
-    private companion object {
-        const val PREFS_NAME = "hamghadam.settings"
-        const val KEY_THEME = "theme"
-        const val KEY_DIGITS = "persian_digits"
-        const val KEY_REMINDER = "default_reminder"
-        const val NO_REMINDER = -1
+    companion object {
+        private const val PREFS_NAME = "hamghadam.settings"
+        private const val KEY_THEME = "theme"
+        private const val KEY_DIGITS = "persian_digits"
+        private const val KEY_REMINDER = "default_reminder"
+        private const val KEY_SOURCES = "calendar_sources"
+        private const val KEY_FOCUS_MINUTES = "focus_minutes"
+        private const val KEY_BREAK_MINUTES = "break_minutes"
+        private const val KEY_FOCUS_GOAL = "focus_goal"
+        private const val KEY_GOOGLE_CLIENT = "google_client_id"
+        private const val KEY_GOOGLE_CONNECTED = "google_connected"
+        private const val NO_REMINDER = -1
     }
 }

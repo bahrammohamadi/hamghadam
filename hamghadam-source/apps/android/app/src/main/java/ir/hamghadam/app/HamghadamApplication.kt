@@ -6,17 +6,30 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import ir.hamghadam.app.data.AppDatabase
+import ir.hamghadam.app.data.EventCatalog
 import ir.hamghadam.app.data.SettingsStore
 import ir.hamghadam.app.data.TaskRepository
+import ir.hamghadam.app.google.GoogleSyncScheduler
+import ir.hamghadam.app.google.GoogleTokenStore
 import ir.hamghadam.app.notify.ReminderReceiver
 import ir.hamghadam.app.notify.ReminderScheduler
 
 /** Manual dependency container: small app, no DI framework needed yet. */
 class AppContainer(application: Application) {
     val database: AppDatabase = AppDatabase.get(application)
-    val repository = TaskRepository(database.taskDao(), database.projectDao(), database.habitDao())
+    val repository = TaskRepository(
+        taskDao = database.taskDao(),
+        projectDao = database.projectDao(),
+        habitDao = database.habitDao(),
+        eventDao = database.personalEventDao(),
+        externalEventDao = database.externalEventDao(),
+        focusDao = database.focusSessionDao(),
+        templateDao = database.templateDao(),
+    )
     val settings = SettingsStore(application)
     val reminders = ReminderScheduler(application)
+    val events = EventCatalog(application)
+    val googleTokens = GoogleTokenStore(application)
 }
 
 class HamghadamApplication : Application() {
@@ -28,6 +41,11 @@ class HamghadamApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         createNotificationChannel()
+        // Only schedule the optional sync when the user already connected a calendar.
+        val settings = container.settings.settings.value
+        if (settings.googleConnected && settings.googleClientId.isNotBlank()) {
+            runCatching { GoogleSyncScheduler.schedule(this) }
+        }
     }
 
     private fun createNotificationChannel() {

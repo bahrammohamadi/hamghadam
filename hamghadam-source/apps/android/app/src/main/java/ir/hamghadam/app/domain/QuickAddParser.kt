@@ -13,7 +13,9 @@ data class QuickAddResult(
     val priority: Int,
     /** The raw expressions that were understood, e.g. `["فردا", "ساعت ۹"]`. */
     val matches: List<String> = emptyList(),
-    /** True when no date/time was recognised at all. */
+    /** Hashtags found in the text, e.g. `["خرید"]` for `#خرید`. */
+    val tags: List<String> = emptyList(),
+    /** True when no date/time/tag was recognised at all. */
     val isPlainText: Boolean = false,
 )
 
@@ -283,7 +285,8 @@ object QuickAddParser {
                 }
             }
         }
-        val title = PersianText.cleanTitle(PersianText.normalizeDisplay(titleRaw))
+        val titleWithTags = PersianText.cleanTitle(PersianText.normalizeDisplay(titleRaw))
+        val (title, tags) = Tags.extractFromQuickAdd(titleWithTags)
         return QuickAddResult(
             title = title,
             date = date,
@@ -291,7 +294,8 @@ object QuickAddParser {
             priority = priority,
             matches = matches.filter { it.isNotBlank() }
                 .map { PersianText.toPersianDigits(PersianText.normalizeDisplay(it.trim())) },
-            isPlainText = date == null && time == null && priority == PRIORITY_NORMAL,
+            tags = tags,
+            isPlainText = date == null && time == null && tags.isEmpty() && priority == PRIORITY_NORMAL,
         )
     }
 

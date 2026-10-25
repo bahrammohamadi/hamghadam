@@ -48,6 +48,7 @@ import ir.hamghadam.app.domain.PersianCalendar
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.ReminderOptions
 import ir.hamghadam.app.domain.RepeatRule
+import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.ui.components.PillChip
 
 @Composable
@@ -58,6 +59,8 @@ fun TaskEditorScreen(
     onSave: (TaskDraft) -> Unit,
     onCancel: () -> Unit,
     onDelete: ((TaskDraft) -> Unit)? = null,
+    knownTags: List<String> = emptyList(),
+    onSaveAsTemplate: ((TaskDraft) -> Unit)? = null,
 ) {
     var draft by remember(initial) { mutableStateOf(initial) }
     val today = JalaliDate.today()
@@ -244,6 +247,38 @@ fun TaskEditorScreen(
                 }
             }
 
+            EditorSection(title = "برچسب‌ها") {
+                OutlinedTextField(
+                    value = draft.tags,
+                    onValueChange = { draft = draft.copy(tags = Tags.toCsv(Tags.parseCsv(it))) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("مثلاً کار, خرید — با کاما جدا کن", fontSize = 12.sp) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                )
+                if (knownTags.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (tag in knownTags.take(5)) {
+                            PillChip(
+                                text = Tags.display(tag),
+                                selected = draft.tags.contains(tag),
+                                tint = ir.hamghadam.app.ui.theme.HamghadamPalette.Olive,
+                                onClick = {
+                                    draft = draft.copy(
+                                        tags = if (draft.tags.contains(tag)) {
+                                            Tags.remove(draft.tags, tag)
+                                        } else {
+                                            Tags.add(draft.tags, tag)
+                                        },
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
             EditorSection(title = "اهمیت") {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (priority in listOf(TaskEntity.PRIORITY_LOW, TaskEntity.PRIORITY_NORMAL, TaskEntity.PRIORITY_HIGH)) {
@@ -272,6 +307,16 @@ fun TaskEditorScreen(
                             )
                         }
                     }
+                }
+            }
+
+            if (onSaveAsTemplate != null && draft.title.isNotBlank()) {
+                OutlinedButton(
+                    onClick = { onSaveAsTemplate(draft) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Text("ذخیره به‌عنوان تمپلیت")
                 }
             }
 

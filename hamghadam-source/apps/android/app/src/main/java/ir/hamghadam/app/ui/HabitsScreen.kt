@@ -50,7 +50,7 @@ import ir.hamghadam.app.domain.TaskQuery
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.EmptyState
 import ir.hamghadam.app.ui.components.ScreenHeader
-import ir.hamghadam.app.ui.components.SectionHeader
+import ir.hamghadam.app.ui.components.SectionTitle
 
 @Composable
 fun HabitsScreen(
@@ -60,6 +60,7 @@ fun HabitsScreen(
     onToggleDay: (String, JalaliDate, Boolean) -> Unit,
     onCreate: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onBack: () -> Unit,
 ) {
     val today = JalaliDate.today()
     val todayEpoch = today.toEpochDay()
@@ -73,6 +74,7 @@ fun HabitsScreen(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        item { SimpleHeader("عادت‌ها", onBack) }
         item {
             ScreenHeader(
                 title = "عادت‌ها",
@@ -120,7 +122,7 @@ fun HabitsScreen(
                 )
             }
         } else {
-            item { SectionHeader("این هفته") }
+            item { SectionTitle("این هفته") }
             items(habits, key = { it.id }) { habit ->
                 val loggedDays = logsByHabit[habit.id].orEmpty().map { it.epochDay }.toSet()
                 val streak = TaskQuery.currentStreak(loggedDays, todayEpoch)

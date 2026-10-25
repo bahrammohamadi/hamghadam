@@ -1,9 +1,72 @@
 package ir.hamghadam.app.data
 
+import ir.hamghadam.app.domain.CalendarEvent
+import ir.hamghadam.app.domain.FocusRecord
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.RepeatRule
+import ir.hamghadam.app.domain.Tags
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
+
+/** Built-in task templates ("تمپلیت") available on a fresh install. */
+object TemplatePresets {
+
+    val defaults: List<TemplateEntity> = listOf(
+        TemplateEntity(
+            id = "preset-deep-work",
+            name = "تمرکز عمیق",
+            title = "یک بلوک تمرکز ۲۵ دقیقه‌ای",
+            notes = "گوشی را کنار بگذار و فقط روی همین کار بمان.",
+            priority = TaskEntity.PRIORITY_HIGH,
+            minuteOfDay = 9 * 60,
+            tagCsv = "تمرکز",
+            builtin = true,
+            createdAtEpochMillis = 1_700_000_000_000L,
+        ),
+        TemplateEntity(
+            id = "preset-daily-review",
+            name = "مرور روزانه",
+            title = "مرور برنامهٔ فردا",
+            notes = "سه کار مهم فردا را انتخاب کن.",
+            priority = TaskEntity.PRIORITY_NORMAL,
+            minuteOfDay = 21 * 60,
+            tagCsv = "مرور",
+            builtin = true,
+            createdAtEpochMillis = 1_700_000_001_000L,
+        ),
+        TemplateEntity(
+            id = "preset-study",
+            name = "مطالعه",
+            title = "مطالعهٔ ۳۰ دقیقه‌ای",
+            priority = TaskEntity.PRIORITY_NORMAL,
+            minuteOfDay = 20 * 60,
+            tagCsv = "مطالعه",
+            builtin = true,
+            createdAtEpochMillis = 1_700_000_002_000L,
+        ),
+        TemplateEntity(
+            id = "preset-workout",
+            name = "ورزش صبحگاهی",
+            title = "ورزش صبحگاهی (۲۰ دقیقه)",
+            priority = TaskEntity.PRIORITY_NORMAL,
+            minuteOfDay = 7 * 60,
+            tagCsv = "سلامتی",
+            builtin = true,
+            createdAtEpochMillis = 1_700_000_003_000L,
+        ),
+        TemplateEntity(
+            id = "preset-weekly-shopping",
+            name = "خرید هفتگی",
+            title = "خرید هفتگی خانه",
+            priority = TaskEntity.PRIORITY_LOW,
+            tagCsv = "خانه",
+            builtin = true,
+            createdAtEpochMillis = 1_700_000_004_000L,
+        ),
+    )
+}
 
 /**
  * Single entry point for reading and changing local data.
@@ -15,6 +78,10 @@ class TaskRepository(
     private val taskDao: TaskDao,
     private val projectDao: ProjectDao,
     private val habitDao: HabitDao,
+    private val eventDao: PersonalEventDao,
+    private val externalEventDao: ExternalEventDao,
+    private val focusDao: FocusSessionDao,
+    private val templateDao: TemplateDao,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) {
 
@@ -25,6 +92,14 @@ class TaskRepository(
     fun observeHabits(): Flow<List<HabitEntity>> = habitDao.observeHabits()
 
     fun observeHabitLogs(): Flow<List<HabitLogEntity>> = habitDao.observeLogs()
+
+    fun observePersonalEvents(): Flow<List<PersonalEventEntity>> = eventDao.observeAll()
+
+    fun observeExternalEvents(): Flow<List<ExternalEventEntity>> = externalEventDao.observeAll()
+
+    fun observeFocusSessions(): Flow<List<FocusSessionEntity>> = focusDao.observeAll()
+
+    fun observeTemplates(): Flow<List<TemplateEntity>> = templateDao.observeAll()
 
     suspend fun findTask(id: String): TaskEntity? = taskDao.findById(id)
 
@@ -37,6 +112,7 @@ class TaskRepository(
         priority: Int = TaskEntity.PRIORITY_NORMAL,
         repeat: RepeatRule = RepeatRule.NONE,
         reminderMinutesBefore: Int? = null,
+        tags: String = "",
     ): TaskEntity? {
         val cleanTitle = title.trim()
         if (cleanTitle.isEmpty()) return null
@@ -51,6 +127,7 @@ class TaskRepository(
             priority = priority,
             repeatRule = repeat.storageValue,
             reminderMinutesBefore = reminderMinutesBefore?.takeIf { dueDate != null },
+            tags = Tags.toCsv(Tags.parseCsv(tags)),
             createdAtEpochMillis = timestamp,
             updatedAtEpochMillis = timestamp,
         )
@@ -118,6 +195,10 @@ class TaskRepository(
         projectDao.upsert(project.copy(name = clean))
     }
 
+    suspend fun updateProjectColor(project: ProjectEntity, colorArgb: Int) {
+        projectDao.upsert(project.copy(colorArgb = colorArgb))
+    }
+
     suspend fun deleteProject(id: String) {
         projectDao.deleteById(id)
         taskDao.clearProject(id, now())
@@ -150,6 +231,108 @@ class TaskRepository(
         }
     }
 
+    // --------------------------------------------------------------- events
+
+    suspend fun savePersonalEvent(
+        id: String?,
+        title: String,
+        date: JalaliDate,
+        colorArgb: Int,
+        yearlyRepeat: Boolean,
+        notes: String,
+    ): PersonalEventEntity? {
+        val clean = title.trim()
+        if (clean.isEmpty()) return null
+        val timestamp = now()
+        val existing = id?.let { target -> eventDao.loadAll().firstOrNull { it.id == target } }
+        val entity = PersonalEventEntity(
+            id = existing?.id ?: id ?: UUID.randomUUID().toString(),
+            title = clean,
+            epochDay = date.toEpochDay(),
+            colorArgb = colorArgb,
+            yearlyRepeat = yearlyRepeat,
+            notes = notes.trim(),
+            createdAtEpochMillis = existing?.createdAtEpochMillis ?: timestamp,
+            updatedAtEpochMillis = timestamp,
+        )
+        eventDao.upsert(entity)
+        return entity
+    }
+
+    suspend fun deletePersonalEvent(id: String) = eventDao.deleteById(id)
+
+    suspend fun loadPersonalEvents(): List<PersonalEventEntity> = eventDao.loadAll()
+
+    // -------------------------------------------------------------- focus
+
+    suspend fun recordFocus(record: FocusRecord): FocusSessionEntity {
+        val entity = FocusSessionEntity(
+            id = record.id,
+            taskId = record.taskId,
+            epochDay = record.epochDay,
+            seconds = record.seconds,
+            completed = record.completed,
+            startedAtEpochMillis = record.startedAtEpochMillis,
+        )
+        focusDao.upsert(entity)
+        return entity
+    }
+
+    suspend fun loadFocusSessions(): List<FocusSessionEntity> = focusDao.loadAll()
+
+    suspend fun focusDay(epochDay: Long): Pair<Int, Int> {
+        val sessions = focusDao.loadAll().filter { it.epochDay == epochDay }
+        return sessions.count { it.completed } to (sessions.sumOf { it.seconds } / 60)
+    }
+
+    // ---------------------------------------------------------- templates
+
+    suspend fun ensureTemplatesSeeded() {
+        if (templateDao.count() == 0) templateDao.upsertAll(TemplatePresets.defaults)
+    }
+
+    suspend fun createTemplate(
+        name: String,
+        title: String,
+        notes: String = "",
+        priority: Int = TaskEntity.PRIORITY_NORMAL,
+        minuteOfDay: Int? = null,
+        tags: String = "",
+        projectId: String? = null,
+    ): TemplateEntity? {
+        val cleanName = name.trim()
+        val cleanTitle = title.trim()
+        if (cleanName.isEmpty() || cleanTitle.isEmpty()) return null
+        val template = TemplateEntity(
+            id = UUID.randomUUID().toString(),
+            name = cleanName,
+            title = cleanTitle,
+            notes = notes.trim(),
+            priority = priority,
+            minuteOfDay = minuteOfDay,
+            tagCsv = Tags.toCsv(Tags.parseCsv(tags)),
+            projectId = projectId,
+            builtin = false,
+            createdAtEpochMillis = now(),
+        )
+        templateDao.upsertAll(listOf(template))
+        return template
+    }
+
+    suspend fun deleteTemplate(id: String) = templateDao.deleteById(id)
+
+    // ------------------------------------------------------- google cache
+
+    suspend fun replaceExternalEvents(events: List<ExternalEventEntity>) {
+        externalEventDao.deleteAll()
+        if (events.isNotEmpty()) externalEventDao.upsertAll(events)
+    }
+
+    suspend fun clearExternalEvents() = externalEventDao.deleteAll()
+
+    suspend fun externalEventsAsCalendar(): List<CalendarEvent> =
+        externalEventDao.loadAll().mapNotNull { it.toEvent() }
+
     // --------------------------------------------------------------- backup
 
     suspend fun exportBackup(): String = BackupCodec.encode(
@@ -158,6 +341,9 @@ class TaskRepository(
             projects = projectDao.loadAll(),
             habits = habitDao.loadHabits(),
             habitLogs = habitDao.loadLogs(),
+            personalEvents = eventDao.loadAll(),
+            templates = templateDao.loadAll().filterNot { it.builtin },
+            focusSessions = focusDao.loadAll(),
             exportedAtEpochMillis = now(),
         ),
     )
@@ -169,10 +355,38 @@ class TaskRepository(
         projectDao.deleteAll()
         habitDao.deleteAllHabits()
         habitDao.deleteAllLogs()
+        eventDao.deleteAll()
+        focusDao.deleteAll()
+        // Built-in templates stay; user templates are replaced by the backup.
+        templateDao.loadAll().filterNot { it.builtin }.forEach { templateDao.deleteById(it.id) }
         taskDao.upsertAll(payload.tasks)
         projectDao.upsertAll(payload.projects)
         habitDao.upsertHabits(payload.habits)
         habitDao.insertLogs(payload.habitLogs)
+        payload.personalEvents.forEach { eventDao.upsert(it) }
+        if (payload.templates.isNotEmpty()) templateDao.upsertAll(payload.templates)
+        payload.focusSessions.forEach { focusDao.upsert(it) }
         return BackupCodec.summarize(payload)
     }
+
+    /** Hint for the backup screen: how much is stored right now. */
+    suspend fun counts(): Map<String, Int> {
+        val focus = focusDao.loadAll()
+        return mapOf(
+            "tasks" to taskDao.loadAll().size,
+            "projects" to projectDao.loadAll().size,
+            "habits" to habitDao.loadHabits().size,
+            "events" to eventDao.loadAll().size,
+            "focus" to focus.count { it.completed },
+            "templates" to templateDao.loadAll().count { !it.builtin },
+        )
+    }
+
+    /** Local Jalali day for an instant, used when logging focus blocks. */
+    fun epochDayOf(millis: Long): Long =
+        JalaliDate.fromGregorian(
+            java.time.Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate(),
+        ).toEpochDay()
+
+    fun todayEpochDay(): Long = LocalDate.now().toEpochDay()
 }

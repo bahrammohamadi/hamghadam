@@ -33,6 +33,8 @@ data class TaskEntity(
     val priority: Int = PRIORITY_NORMAL,
     val repeatRule: String = RepeatRule.NONE.storageValue,
     val reminderMinutesBefore: Int? = null,
+    /** Comma separated labels ("برچسب‌ها") such as `کار,خرید`. */
+    val tags: String = "",
     val completedAtEpochMillis: Long? = null,
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val updatedAtEpochMillis: Long = System.currentTimeMillis(),
@@ -46,6 +48,15 @@ data class TaskEntity(
     val dueDate: JalaliDate? get() = dueEpochDay?.let { JalaliDate.fromEpochDay(it) }
 
     val dueTime: LocalTime? get() = dueMinuteOfDay?.let { LocalTime.of(it / 60, it % 60) }
+
+    val tagList: List<String> get() = ir.hamghadam.app.domain.Tags.parseCsv(tags)
+
+    val completedDate: JalaliDate?
+        get() = completedAtEpochMillis?.let { millis ->
+            runCatching {
+                JalaliDate.fromGregorian(java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate())
+            }.getOrNull()
+        }
 
     companion object {
         const val PRIORITY_LOW = 0
