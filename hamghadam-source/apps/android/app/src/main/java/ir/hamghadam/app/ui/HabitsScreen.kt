@@ -51,6 +51,7 @@ import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.EmptyState
 import ir.hamghadam.app.ui.components.ClayBanner
 import ir.hamghadam.app.ui.components.SectionArtwork
+import ir.hamghadam.app.ui.theme.HamghadamPalette
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
 
