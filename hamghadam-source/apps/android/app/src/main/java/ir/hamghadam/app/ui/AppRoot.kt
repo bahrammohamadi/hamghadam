@@ -301,7 +301,7 @@ fun AppRoot(viewModel: AppViewModel) {
                             .padding(padding)
                             .background(MaterialTheme.colorScheme.background),
                     ) {
-                        Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                        Box(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
                             when (currentTab) {
                                 AppTab.HOME -> HomeScreen(
                                     tasks = tasks,
