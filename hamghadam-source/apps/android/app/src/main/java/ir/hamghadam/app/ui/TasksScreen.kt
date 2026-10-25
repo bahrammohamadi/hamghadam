@@ -117,7 +117,7 @@ fun TasksScreen(
                 title = "کارها",
                 subtitle = "${PersianText.number(tasks.count { !it.isCompleted }, digits)} کار باز • " +
                     "${PersianText.number(projects.size, digits)} لیست",
-            )
+                art = SectionArtwork.TASKS,)
         }
         item {
             OutlinedTextField(

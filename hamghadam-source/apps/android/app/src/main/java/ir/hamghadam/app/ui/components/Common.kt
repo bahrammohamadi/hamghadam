@@ -83,11 +83,28 @@ fun SoftCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // Depth on every card in the app: a wide soft shadow, a subtle vertical
+    // gradient (lighter at the top) and a 1dp rim light along the top edge.
     val base = modifier
         .fillMaxWidth()
         .softShadow(radius = radius, elevation = elevation)
         .clip(RoundedCornerShape(radius))
-        .background(color)
+        .background(
+            Brush.verticalGradient(
+                listOf(
+                    color.lighten(0.055f),
+                    color,
+                    color.darken(0.035f),
+                ),
+            ),
+        )
+        .border(
+            width = 1.dp,
+            brush = Brush.verticalGradient(
+                listOf(Color.White.copy(alpha = 0.55f), Color.White.copy(alpha = 0f)),
+            ),
+            shape = RoundedCornerShape(radius),
+        )
     val click = onClick
     Column(
         modifier = if (click != null) base.clickable { click() } else base,
@@ -128,12 +145,18 @@ fun ScreenHeader(
     subtitle: String,
     onSettings: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
+    art: Int? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (art != null) {
+            // Section identity: a soft-clay object that floats beside the title.
+            SectionArt(art = art, size = 54.dp)
+            Spacer(Modifier.width(4.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(
                 text = subtitle,

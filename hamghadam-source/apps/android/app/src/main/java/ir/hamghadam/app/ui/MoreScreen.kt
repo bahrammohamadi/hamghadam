@@ -73,7 +73,7 @@ fun MoreScreen(
                 title = "بیشتر",
                 subtitle = "همهٔ ابزارهای هم‌قدم در یک جا",
                 onSettings = onOpenSettings,
-            )
+                art = SectionArtwork.PROFILE,)
         }
 
         item {

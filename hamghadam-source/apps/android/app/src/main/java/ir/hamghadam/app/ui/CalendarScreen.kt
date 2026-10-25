@@ -137,7 +137,7 @@ fun CalendarScreen(
             ScreenHeader(
                 title = "تقویم",
                 subtitle = PersianCalendar.longDate(today, digits) + " • مناسبت‌های آفلاین",
-            )
+                art = SectionArtwork.CALENDAR,)
         }
         item {
             MonthCard(

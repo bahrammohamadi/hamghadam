@@ -100,7 +100,7 @@ fun FocusScreen(
                 title = "تمرکز",
                 subtitle = "پومودورو • ${PersianText.number(minutesToday, digits)} دقیقه امروز",
                 onSettings = onOpenTimerSettings,
-            )
+                art = SectionArtwork.FOCUS,)
         }
         item {
             Card(
