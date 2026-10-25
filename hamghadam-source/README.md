@@ -56,7 +56,7 @@ hamghadam-source/
 **آنچه واقعاً اجرا و بررسی شده است:**
 
 - **بیلد واقعی Gradle/Android روی GitHub Actions سبز است**: `:app:testDebugUnitTest` و `:app:assembleDebug` هر دو موفق و APK دیباگ روی release غلتان `latest-debug` منتشر می‌شود (حدود ۳ دقیقه برای هر اجرا).
-- **۸۴ تست واحد JVM در ۱۲ کلاس** با موفقیت اجرا می‌شود؛ از جمله تست مناسبت‌های واقعی ۱۴۰۴/۱۴۰۵، تمرکز، چالش روزانه و پشتیبان نسخهٔ ۲ (`JalaliDate`, `PersianText`, `PersianCalendar`, `QuickAddParser`, `RepeatRule`, `TaskQuery`, `Tags`, `BackupCodec`, `BackupV2`, `EventCalendar`, `FocusStats`, `DailyChallenge`).
+- **۹۲ تست واحد JVM در ۱۴ کلاس** با موفقیت اجرا می‌شود؛ از جمله تست مناسبت‌های واقعی ۱۴۰۴/۱۴۰۵، تمرکز، چالش روزانه، قالب گوگل کلندر و پشتیبان نسخهٔ ۲ (`JalaliDate`, `PersianText`, `PersianCalendar`, `QuickAddParser`, `RepeatRule`, `TaskQuery`, `Tags`, `BackupCodec`, `BackupV2`, `EventCalendar`, `FocusStats`, `DailyChallenge`, `GoogleOAuth`, `GoogleCalendarApi`).
 - تبدیل تاریخ جلالی با پیاده‌سازی مرجع `jdatetime` برای **هر ۱۰۹٬۹۳۸ روز بین ۱۸۵۰ تا ۲۱۵۰** مقایسه شد: صفر اختلاف، صفر خطای رفت‌وبرگشت.
 - کل کد اپ (شامل Compose، Room، AlarmManager و ViewModel) در این محیط با یک «آینهٔ stub» از APIهای اندروید/Compose از نظر **نوع و امضا** بررسی شد؛ خطای نحوی/امضایی باقی نمانده است.
 
