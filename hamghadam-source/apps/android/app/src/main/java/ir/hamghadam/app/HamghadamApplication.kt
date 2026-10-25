@@ -1,10 +1,6 @@
 package ir.hamghadam.app
 
 import android.app.Application
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
-import android.os.Build
 import ir.hamghadam.app.data.AppDatabase
 import ir.hamghadam.app.data.EventCatalog
 import ir.hamghadam.app.data.ProfileStore
@@ -13,7 +9,7 @@ import ir.hamghadam.app.data.SettingsStore
 import ir.hamghadam.app.data.TaskRepository
 import ir.hamghadam.app.google.GoogleSyncScheduler
 import ir.hamghadam.app.google.GoogleTokenStore
-import ir.hamghadam.app.notify.ReminderReceiver
+import ir.hamghadam.app.notify.Notifications
 import ir.hamghadam.app.notify.ReminderScheduler
 
 /** Manual dependency container: small app, no DI framework needed yet. */
@@ -45,7 +41,8 @@ class HamghadamApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
-        createNotificationChannel()
+        Notifications.removeLegacyChannels(this)
+        Notifications.ensureChannels(this)
         // Only schedule the optional sync when the user already connected a calendar.
         val settings = container.settings.settings.value
         if (settings.googleConnected && settings.googleClientId.isNotBlank()) {
@@ -53,16 +50,4 @@ class HamghadamApplication : Application() {
         }
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channel = NotificationChannel(
-            ReminderReceiver.CHANNEL_ID,
-            "یادآور کارها",
-            NotificationManager.IMPORTANCE_HIGH,
-        ).apply {
-            description = "یادآور کارهای دارای تاریخ و ساعت"
-        }
-        manager.createNotificationChannel(channel)
-    }
 }

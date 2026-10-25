@@ -34,6 +34,9 @@ import ir.hamghadam.app.google.GoogleCalendarApi
 import ir.hamghadam.app.google.GoogleOAuth
 import ir.hamghadam.app.google.GoogleSyncScheduler
 import ir.hamghadam.app.google.GoogleTokenStore
+import ir.hamghadam.app.notify.FocusService
+import ir.hamghadam.app.notify.Notifications
+import ir.hamghadam.app.widget.WidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -43,6 +46,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -218,6 +222,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             refreshGoogleStatus()
             val focusSeconds = settingsStore.settings.value.focusMinutes * 60
             _focusTimer.update { it.copy(totalSeconds = focusSeconds, remainingSeconds = focusSeconds) }
+        }
+        // Keep the home-screen widgets in step with the data without hammering
+        // the launcher: debounce bursts of edits into a single refresh.
+        viewModelScope.launch {
+            tasks.collectLatest {
+                delay(1200)
+                WidgetUpdater.refreshAll(getApplication<Application>())
+            }
         }
     }
 
@@ -491,6 +503,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             finishedAtEpochMillis = 0L,
         )
         launchTimer()
+        notifyFocusRunning()
     }
 
     fun startBreak() {
@@ -506,6 +519,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             finishedAtEpochMillis = 0L,
         )
         launchTimer()
+        notifyFocusRunning()
     }
 
     private fun launchTimer() {
@@ -528,6 +542,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _focusTimer.update {
             it.copy(running = false, remainingSeconds = 0, finishedAtEpochMillis = System.currentTimeMillis())
         }
+        FocusService.stop(getApplication<Application>())
         if (state.onBreak) {
             _focusTimer.update { it.copy(onBreak = false) }
             _events.send(UiEvent.Message("استراحت تمام شد؛ آمادهٔ تمرکز بعدی هستی"))
@@ -542,6 +557,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val remaining = ((focusEndsAtMillis - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(0)
         focusJob?.cancel()
         _focusTimer.update { it.copy(running = false, remainingSeconds = remaining) }
+        FocusService.stop(getApplication<Application>())
     }
 
     fun resumeFocus() {
@@ -550,11 +566,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         focusEndsAtMillis = System.currentTimeMillis() + state.remainingSeconds * 1000L
         _focusTimer.update { it.copy(running = true) }
         launchTimer()
+        notifyFocusRunning()
     }
 
     fun stopFocus() {
         val state = _focusTimer.value
         focusJob?.cancel()
+        FocusService.stop(getApplication<Application>())
         val elapsedSeconds = (state.totalSeconds - state.remainingSeconds).coerceAtLeast(0)
         if (!state.onBreak && elapsedSeconds >= 60) {
             recordFocus(elapsedSeconds, completed = false)
@@ -567,6 +585,19 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             minutesToday = state.minutesToday,
             taskId = state.taskId,
             taskTitle = state.taskTitle,
+        )
+    }
+
+    /** Mirrors the running countdown into an ongoing, silent notification. */
+    private fun notifyFocusRunning() {
+        val state = _focusTimer.value
+        Notifications.ensureChannels(getApplication<Application>())
+        FocusService.start(
+            context = getApplication<Application>(),
+            endsAtMillis = focusEndsAtMillis,
+            totalSeconds = state.totalSeconds,
+            label = state.taskTitle.orEmpty(),
+            onBreak = state.onBreak,
         )
     }
 
@@ -583,6 +614,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             )
             repository.recordFocus(record)
             refreshFocusToday()
+            WidgetUpdater.refreshAll(getApplication<Application>())
         }
     }
 

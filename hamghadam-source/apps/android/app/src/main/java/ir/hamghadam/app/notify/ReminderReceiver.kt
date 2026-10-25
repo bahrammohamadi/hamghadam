@@ -1,7 +1,6 @@
 package ir.hamghadam.app.notify
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -33,6 +32,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
         when (intent.action) {
             ACTION_DONE -> completeTask(context, taskId)
+            ACTION_SNOOZE -> snooze(context, taskId, intent)
             else -> showNotification(
                 context = context,
                 taskId = taskId,
@@ -44,7 +44,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
     private fun showNotification(context: Context, taskId: String, title: String, dueLabel: String) {
         if (!hasNotificationPermission(context)) return
-        ensureChannel(context)
+        Notifications.ensureChannels(context)
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -66,21 +66,96 @@ class ReminderReceiver : BroadcastReceiver() {
             doneIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val snoozeIntent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ACTION_SNOOZE
+            putExtra(EXTRA_TASK_ID, taskId)
+            putExtra(EXTRA_TASK_TITLE, title)
+            putExtra(EXTRA_DUE_LABEL, dueLabel)
+        }
+        val snoozePendingIntent = PendingIntent.getBroadcast(
+            context,
+            taskId.hashCode() + 2,
+            snoozeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title.ifBlank { "یادآور کار" })
             .setContentText(
                 if (dueLabel.isBlank()) "وقت انجام این کار رسیده" else "هم‌قدم • $dueLabel",
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setGroup(Notifications.GROUP_TASKS)
             .setAutoCancel(true)
+            // Title of a task can be private, so hide it on the lock screen.
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(openPendingIntent)
             .addAction(0, "انجام شد", donePendingIntent)
+            .addAction(0, "۱۰ دقیقه بعد", snoozePendingIntent)
             .build()
 
+        val manager = NotificationManagerCompat.from(context)
         runCatching {
-            NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
+            manager.notify(taskId.hashCode(), notification)
+            manager.notify(Notifications.ID_GROUP_SUMMARY, groupSummary(context))
+        }
+    }
+
+    /**
+     * One-line summary so several reminders collapse into a single stack instead
+     * of flooding the shade. It is silent and auto-cancels itself.
+     */
+    private fun groupSummary(context: Context): android.app.Notification =
+        NotificationCompat.Builder(context, Notifications.CHANNEL_REMINDERS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("یادآورهای هم‌قدم")
+            .setContentText("کارهای سررسیده را ببینید")
+            .setGroup(Notifications.GROUP_TASKS)
+            .setGroupSummary(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+            .setAutoCancel(true)
+            .build()
+
+    private fun snooze(context: Context, taskId: String, intent: Intent) {
+        val title = intent.getStringExtra(EXTRA_TASK_TITLE).orEmpty()
+        val manager = NotificationManagerCompat.from(context)
+        manager.cancel(taskId.hashCode())
+
+        // Re-post the same notification ten minutes from now with AlarmManager,
+        // so snoozing survives the process being killed.
+        val triggerAt = System.currentTimeMillis() + SNOOZE_MINUTES * 60_000L
+        val alarm = Intent(context, ReminderReceiver::class.java).apply {
+            action = ACTION_REMIND
+            putExtra(EXTRA_TASK_ID, taskId)
+            putExtra(EXTRA_TASK_TITLE, title)
+            putExtra(EXTRA_DUE_LABEL, "۱۰ دقیقه بعد")
+        }
+        val pending = PendingIntent.getBroadcast(
+            context,
+            taskId.hashCode() + 3,
+            alarm,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        runCatching {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pending)
+        }
+        // Short confirmation so the tap has visible feedback.
+        runCatching {
+            manager.notify(
+                Notifications.ID_SNOOZE_CONFIRM,
+                NotificationCompat.Builder(context, Notifications.CHANNEL_DIGEST)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle("۱۰ دقیقه بعد یادآوری می‌شود")
+                    .setContentText(title.ifBlank { "کار" })
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setAutoCancel(true)
+                    .setTimeoutAfter(4000)
+                    .build(),
+            )
         }
     }
 
@@ -107,23 +182,15 @@ class ReminderReceiver : BroadcastReceiver() {
             true
         }
 
-    private fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
-        val channel = NotificationChannel(CHANNEL_ID, "یادآور کارها", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "یادآور کارهای دارای تاریخ و ساعت"
-        }
-        manager.createNotificationChannel(channel)
-    }
-
     companion object {
         const val ACTION_REMIND = "ir.hamghadam.app.action.REMIND"
         const val ACTION_DONE = "ir.hamghadam.app.action.DONE"
+        const val ACTION_SNOOZE = "ir.hamghadam.app.action.SNOOZE"
         const val EXTRA_TASK_ID = "task_id"
         const val EXTRA_TASK_TITLE = "task_title"
         const val EXTRA_DUE_LABEL = "task_due_label"
-        const val CHANNEL_ID = "task_reminders"
+        const val CHANNEL_ID = Notifications.CHANNEL_REMINDERS
+        const val SNOOZE_MINUTES = 10
 
         /** Human readable summary used by the notification body. */
         fun dueSummary(date: JalaliDate?, minuteOfDay: Int?): String {

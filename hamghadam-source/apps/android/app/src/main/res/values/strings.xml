@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">هم‌قدم</string>
+    <string name="widget_today_description">ویجت امروز: تاریخ شمسی، شمار کارهای باز و سه کار بعدی</string>
+    <string name="widget_focus_description">ویجت تمرکز: دقیقه‌های تمرکز امروز و شروع سریع پومودورو</string>
+    <string name="widget_today_label">امروز</string>
+    <string name="widget_focus_label">تمرکز</string>
 </resources>

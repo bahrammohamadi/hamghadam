@@ -106,7 +106,11 @@ private object MoreRoute {
 }
 
 @Composable
-fun AppRoot(viewModel: AppViewModel) {
+fun AppRoot(
+    viewModel: AppViewModel,
+    pendingRoute: String? = null,
+    onRouteHandled: () -> Unit = {},
+) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val projects by viewModel.projects.collectAsStateWithLifecycle()
@@ -160,6 +164,22 @@ fun AppRoot(viewModel: AppViewModel) {
             var activeDraft by remember { mutableStateOf<TaskDraft?>(null) }
             var sheetTask by remember { mutableStateOf<TaskEntity?>(null) }
             val snackbarHostState = remember { SnackbarHostState() }
+
+            // Entry points coming from the home-screen widgets or a notification.
+            LaunchedEffect(pendingRoute) {
+                when (pendingRoute) {
+                    "quick_add" -> {
+                        tabName = AppTab.TASKS.name
+                        activeDraft = TaskDraft(dueDate = JalaliDate.today())
+                        onRouteHandled()
+                    }
+                    "start_focus" -> {
+                        tabName = AppTab.FOCUS.name
+                        viewModel.startFocus()
+                        onRouteHandled()
+                    }
+                }
+            }
             val currentTab = AppTab.entries.firstOrNull { it.name == tabName } ?: AppTab.HOME
             val today = JalaliDate.today()
             val knownTags = remember(tasks) { Tags.counts(tasks.map { it.tags }).map { it.first } }
