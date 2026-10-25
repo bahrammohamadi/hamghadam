@@ -1,11 +1,7 @@
-# ساخت APK دیباگ در GitHub Actions
-#
-# این فایل باید در مسیر  .github/workflows/android-apk.yml  قرار بگیرد.
-# دلیل اینکه مستقیماً آنجا نیست: توکن/اپ دسترسی نوشتن روی مسیر workflow را ندارد.
-# راه ساده: در گیت‌هاب، Add file → Create new file و مسیر
-#   .github/workflows/android-apk.yml
-# را بساز، محتوای این فایل را جای‌گذاری کن و commit کن.
-# سپس از تب Actions، workflow «Build Android APK» را اجرا کن (Run workflow).
+# ساخت و تست خودکار APK دیباگ در GitHub Actions
+# محل نهایی این فایل: .github/workflows/android-apk.yml
+# (توکن اتوماسیون این مخزن مجوز Workflows ندارد، پس این فایل باید یک بار
+#  از طریق وب گیت‌هاب در مسیر درست commit شود.)
 
 name: Build Android APK
 
@@ -24,6 +20,10 @@ jobs:
   android:
     name: Test + build debug APK
     runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8"
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -38,33 +38,50 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android platform and build tools
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+          cache-read-only: false
+
+      - name: Show toolchain versions
+        working-directory: hamghadam-source/apps/android
+        run: |
+          java -version
+          gradle --version
 
       - name: Run JVM unit tests
         working-directory: hamghadam-source/apps/android
-        run: gradle --no-daemon :app:testDebugUnitTest
+        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest
 
       - name: Build debug APK
         working-directory: hamghadam-source/apps/android
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
 
-      - name: Upload test report on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-report
-          path: hamghadam-source/apps/android/app/build/reports/tests/testDebugUnitTest/**
-          if-no-files-found: ignore
+      - name: Show APK info
+        if: success()
+        run: ls -lh hamghadam-source/apps/android/app/build/outputs/apk/debug/
 
       - name: Upload installable debug APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: hamghadam-debug-apk
           path: hamghadam-source/apps/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: |
+            hamghadam-source/apps/android/app/build/reports/**
+            hamghadam-source/apps/android/app/build/test-results/**
+          if-no-files-found: ignore
+          retention-days: 7
