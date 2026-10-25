@@ -84,17 +84,42 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Opens the database with SQLCipher when the native library is present.
+         * If anything about encryption fails we still return a working (plain)
+         * database instead of crashing the app on launch — but we never silently
+         * downgrade: the failure is logged and surfaced through [cryptoStatus].
+         */
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(
-                context.applicationContext,
-                AppDatabase::class.java,
-                "hamghadam.db",
-            )
+            instance ?: build(context).also { instance = it }
+        }
+
+        /** Human-readable state for the profile screen; never throws. */
+        @Volatile var cryptoStatus: String = "unknown"
+            private set
+
+        private fun build(context: Context): AppDatabase {
+            val app = context.applicationContext
+            val encrypted = runCatching {
+                DatabaseCrypto.loadLibrary()
+                DatabaseCrypto.migrateIfNeeded(app)
+            }.getOrElse {
+                android.util.Log.e("AppDatabase", "SQLCipher unavailable; using plain database", it)
+                false
+            }
+            val builder = Room.databaseBuilder(app, AppDatabase::class.java, DatabaseCrypto.DB_NAME)
                 .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 // Older pre-release schemas (v1) can still be thrown away safely.
                 .fallbackToDestructiveMigration()
-                .build()
-                .also { instance = it }
+
+            if (encrypted) {
+                val key = DatabaseCrypto.passphrase(app)
+                val factory = net.zetetic.database.sqlcipher.SupportOpenHelperFactory(key.toByteArray(Charsets.UTF_8))
+                cryptoStatus = if (DatabaseCrypto.isKeyKeystoreProtected(app)) "encrypted+keystore" else "encrypted+prefs"
+                return builder.openHelperFactory(factory).build()
+            }
+            cryptoStatus = "plaintext"
+            return builder.build()
         }
     }
 }

@@ -2,6 +2,7 @@ package ir.hamghadam.app
 
 import android.app.Application
 import ir.hamghadam.app.data.AppDatabase
+import ir.hamghadam.app.data.DatabaseCrypto
 import ir.hamghadam.app.data.EventCatalog
 import ir.hamghadam.app.data.ProfileStore
 import ir.hamghadam.app.data.SecurityStore
@@ -41,6 +42,8 @@ class HamghadamApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // The encrypted database has been opened by now; drop the plaintext copy.
+        DatabaseCrypto.cleanupPlaintextBackup(this)
         Notifications.removeLegacyChannels(this)
         Notifications.ensureChannels(this)
         // Only schedule the optional sync when the user already connected a calendar.
