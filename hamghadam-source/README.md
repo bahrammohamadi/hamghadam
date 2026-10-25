@@ -25,7 +25,9 @@
 
 ## گرفتن APK
 
-**آماده‌ترین راه:** از صفحهٔ [Releases](https://github.com/bahrammohamadi/hamghadam/releases) فایل `app-debug.apk` آخرین تگ `debug-*` را دانلود کن. همین فایل در اجراهای Actions هم به‌عنوان artifact با نام `hamghadam-debug-apk` هست.
+**آماده‌ترین راه:** از [صفحهٔ Releases](https://github.com/bahrammohamadi/hamghadam/releases/tag/debug-18) فایل `app-debug.apk` را دانلود کن (نسخهٔ 0.3.0، ساخته‌شده از `main`؛ حداقل اندروید 8.0). همین فایل در تب Actions هم به‌عنوان artifact با نام `hamghadam-debug-apk` هست.
+
+هر push روی `main` یا هر PR یک بیلد تازه می‌سازد که پس از ساخته‌شدن APK با `aapt2` تأیید می‌شود (شناسهٔ بسته، وجود launcher، سالم بودن بسته) و بعد در Releases منتشر می‌شود.
 
 سه مسیر ساخت:
 
