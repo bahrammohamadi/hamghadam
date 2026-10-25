@@ -158,6 +158,32 @@ PYTEST
     die_with_log "تست‌های JVM شکست خوردند (مرحله: testDebugUnitTest)"
 fi
 
+# خلاصهٔ تست‌ها: هم برای انسان، هم به‌صورت notice تا بدون لاگ هم دیده شود.
+if command -v python3 >/dev/null 2>&1; then
+    python3 - <<'PYSUM' || true
+import glob
+import xml.etree.ElementTree as ET
+
+total = skipped = failed = 0
+classes = []
+for path in sorted(glob.glob("app/build/test-results/testDebugUnitTest/*.xml")):
+    try:
+        root = ET.parse(path).getroot()
+    except Exception:
+        continue
+    name = root.get("name", "?")
+    count = int(root.get("tests", "0"))
+    total += count
+    skipped += int(root.get("skipped", "0"))
+    failed += int(root.get("failures", "0")) + int(root.get("errors", "0"))
+    classes.append((name.split(".")[-1], count))
+
+print(f"::notice::تست‌ها: {total} اجرا، {failed} شکست، {skipped} رد‌شده در {len(classes)} کلاس")
+for name, count in sorted(classes):
+    print(f"  {name}: {count}")
+PYSUM
+fi
+
 say "ساخت APK دیباگ"
 if ! gradle "${GRADLE_ARGS[@]}" :app:assembleDebug 2>&1 | tee -a "$LOG_FILE"; then
     die_with_log "ساخت APK شکست خورد (مرحله: assembleDebug)"
