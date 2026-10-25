@@ -21,7 +21,15 @@ workflow در `.github/workflows/android-apk.yml` قرار دارد و روی ه
 2. نوشتن `local.properties` با مسیر درست SDK.
 3. `:app:testDebugUnitTest` سپس `:app:assembleDebug` (Gradle 8.9، JDK 17).
 4. در صورت شکست: خطاهای Gradle به‌صورت `::error::` منتشر می‌شوند (از API گیت‌هاب خواندنی‌اند) و ۸۰ خط آخر لاگ در Step Summary می‌آید.
-5. در صورت موفقیت: ساخت Release با تگ `debug-<n>` و پیوست APK (نیازمند `permissions: contents: write` که در workflow تنظیم شده).
+5. **تأیید محتوای APK پیش از انتشار:** سالم بودن ZIP، وجود `AndroidManifest.xml`، `classes.dex` و `resources.arsc`، حداقل حجم ۱MB، و خواندن `aapt2 dump badging`؛ شناسهٔ بسته باید دقیقاً `ir.hamghadam.app` باشد و APK باید حداقل یک activity قابل اجرا (launcher) داشته باشد. اگر هر کدام رد شود جاب fail می‌شود و Release ساخته نمی‌شود.
+6. در صورت موفقیت: ساخت Release با تگ `debug-<n>` و پیوست APK (نیازمند `permissions: contents: write` که در workflow تنظیم شده).
+
+نمونهٔ خروجی تأیید از آخرین اجرا (annotation قابل خواندن از API):
+
+```
+[notice] APK ساختار سالم دارد (zip ok، manifest + dex + resources)
+[notice] APK: package=ir.hamghadam.app versionCode=3 launcher=1 size=9931564B
+```
 
 ## چرا فایل workflow دستی در مخزن قرار گرفت؟
 

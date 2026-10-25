@@ -179,7 +179,7 @@ if [ -n "$AAPT" ]; then
     [ -n "$MINSDK" ] || MINSDK=$(awk -F"'" '/sdkVersion/ {print $2; exit}' "$BADGING_FILE" 2>/dev/null || true)
     [ -n "$MINSDK" ] || MINSDK=$(grep -m1 -oE "sdkVersion[^0-9]*[0-9]+" "$BADGING_FILE" 2>/dev/null | grep -oE "[0-9]+$" || true)
     LAUNCH=$(grep -c "^launchable-activity" "$BADGING_FILE" || true)
-    notice "APK: package=${PKG:-?} versionCode=${VC:-?} minSdk=${MINSDK:-?} launcher=${LAUNCH:-0} size=${APK_SIZE}B"
+    notice "APK: package=${PKG:-?} versionCode=${VC:-?} launcher=${LAUNCH:-0} size=${APK_SIZE}B${MINSDK:+ minSdk=$MINSDK}"
     [ "${PKG:-}" = "ir.hamghadam.app" ] || die "شناسهٔ بستهٔ APK غیرمنتظره است: ${PKG:-خالی}"
     [ "${LAUNCH:-0}" -ge 1 ] || die "APK هیچ activity قابل اجرا (launcher) ندارد"
 else
