@@ -25,9 +25,11 @@
 
 ## گرفتن APK
 
-سه مسیر وجود دارد:
+**آماده‌ترین راه:** از صفحهٔ [Releases](https://github.com/bahrammohamadi/hamghadam/releases) فایل `app-debug.apk` آخرین تگ `debug-*` را دانلود کن. همین فایل در اجراهای Actions هم به‌عنوان artifact با نام `hamghadam-debug-apk` هست.
 
-1. **GitHub Actions (بدون نصب ابزار روی رایانه)** — فایل آمادهٔ workflow در [`ci/android-apk.yml`](ci/android-apk.yml) است. برای فعال‌سازی یک قدم دستی لازم است؛ راهنمای دقیق در [`ci/README.md`](ci/README.md). خروجی: Artifact با نام `hamghadam-debug-apk`.
+سه مسیر ساخت:
+
+1. **GitHub Actions (بدون نصب ابزار روی رایانه)** — workflow در `.github/workflows/android-apk.yml` روی هر push و PR اجرا می‌شود و فقط `ci/build.sh` را صدا می‌زند؛ تست‌ها، ساخت APK و انتشار Release خودکار انجام می‌شود. جزئیات در [`ci/README.md`](ci/README.md).
 2. **Android Studio** — پوشهٔ `apps/android` را باز کن، JDK 17 و Android SDK 35 لازم است، سپس Run.
 3. **خط فرمان** — با Gradle 8.9:
    ```bash
@@ -60,6 +62,7 @@ hamghadam-source/
 
 **آنچه واقعاً اجرا و بررسی شده است:**
 
+- **بیلد واقعی Gradle/Android روی GitHub Actions سبز است** (اجرای `40166923073`، ۳ دقیقه): `:app:testDebugUnitTest` و `:app:assembleDebug` هر دو موفق، APK دیباگ حدود ۹.۹ مگابایت ساخته و به‌صورت Release منتشر شد.
 - کل لایهٔ `domain` و کدک پشتیبان با Kotlin/JVM کامپایل و اجرا شد؛ **۵۷ تست واحد JVM** در ۷ کلاس تست با موفقیت اجرا می‌شود (`JalaliDate`, `PersianText`, `PersianCalendar`, `QuickAddParser`, `RepeatRule`, `TaskQuery`, `BackupCodec`).
 - تبدیل تاریخ جلالی با پیاده‌سازی مرجع `jdatetime` برای **هر ۱۰۹٬۹۳۸ روز بین ۱۸۵۰ تا ۲۱۵۰** مقایسه شد: صفر اختلاف، صفر خطای رفت‌وبرگشت.
 - کل کد اپ (شامل Compose، Room، AlarmManager و ViewModel) در این محیط با یک «آینهٔ stub» از APIهای اندروید/Compose از نظر **نوع و امضا** بررسی شد؛ خطای نحوی/امضایی باقی نمانده است.

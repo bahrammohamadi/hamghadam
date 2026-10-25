@@ -1,32 +1,42 @@
-# ساخت خودکار APK (GitHub Actions)
+# ساخت خودکار APK (GitHub Actions) — ✅ فعال و سبز
 
-## وضعیت فعلی
+workflow در `.github/workflows/android-apk.yml` قرار دارد و روی هر push و PR اجرا می‌شود. فقط `bash hamghadam-source/ci/build.sh` را صدا می‌زند؛ **تمام منطق در [`build.sh`](build.sh) است**، پس اصلاح‌های بعدی CI با push عادی انجام می‌شود و نیازی به ویرایش فایل workflow نیست.
 
-اولین اجرا (run `40166534741`) در مرحلهٔ **Set up Android SDK** شکست خورد. علتش خود اپ نیست:
+## آخرین وضعیت
 
-> `android-actions/setup-android@v3` به‌طور پیش‌فرض بستهٔ قدیمی `tools` را نصب می‌کند و گوگل آن بسته را از مخزن SDK حذف کرده است؛ پس `sdkmanager tools` با کد خطا خارج می‌شود و مرحله قبل از Gradle می‌میرد.
+| مورد | نتیجه |
+|---|---|
+| اجرای `40166534741` | ❌ شکست در `setup-android@v3` (بستهٔ حذف‌شدهٔ `tools`) |
+| اجرای `40166923073` (push) و `40166925367` (PR) | ✅ سبز، ~۳ دقیقه |
+| تست‌های JVM | ✅ `:app:testDebugUnitTest` |
+| APK دیباگ | ✅ `app-debug.apk` (~۹.۹MB) |
+| انتشار | ✅ Release با تگ `debug-<شمارهٔ اجرا>` (prerelease) |
+| Artifact | ✅ `hamghadam-debug-apk` (۳۰ روز نگهداری) |
 
-اصلاح‌ها:
+دانلود APK: صفحهٔ [Releases](https://github.com/bahrammohamadi/hamghadam/releases) → آخرین `debug-*` → `app-debug.apk`.
 
-1. وابستگی به آن Action حذف شد؛ اسکریپت خودش SDK نصب‌شدهٔ runner را پیدا می‌کند، لایسنس‌ها را می‌پذیرد و `platforms;android-35` و `build-tools;35.0.0` را نصب می‌کند.
-2. کل منطق CI به [`build.sh`](build.sh) منتقل شد. فایل workflow فقط ۴۸ خط است و **اسکریپت با push معمولی به‌روز می‌شود**، پس از این به بعد برای اصلاح CI لازم نیست فایل workflow دوباره ویرایش شود.
-3. در صورت شکست، خطاها به‌صورت annotation (`::error::`) منتشر می‌شوند؛ این‌ها از API گیت‌هاب خواندنی‌اند، بنابراین حتی وقتی لاگ کامل در دسترس نباشد علت شکست قابل تشخیص است.
-4. در صورت موفقیت، APK هم به‌عنوان artifact و هم به‌صورت prerelease (`debug-<شمارهٔ اجرا>`) منتشر می‌شود.
+## چه چیزی در build.sh انجام می‌شود
 
-## تنها قدم دستی باقی‌مانده
+1. پیدا کردن Android SDK روی runner (بدون وابستگی به `setup-android`)، پذیرش لایسنس‌ها و نصب `platforms;android-35` و `build-tools;35.0.0`؛ اگر SDK از قبل کامل باشد فقط بررسی می‌شود.
+2. نوشتن `local.properties` با مسیر درست SDK.
+3. `:app:testDebugUnitTest` سپس `:app:assembleDebug` (Gradle 8.9، JDK 17).
+4. در صورت شکست: خطاهای Gradle به‌صورت `::error::` منتشر می‌شوند (از API گیت‌هاب خواندنی‌اند) و ۸۰ خط آخر لاگ در Step Summary می‌آید.
+5. در صورت موفقیت: ساخت Release با تگ `debug-<n>` و پیوست APK (نیازمند `permissions: contents: write` که در workflow تنظیم شده).
 
-محتوای `.github/workflows/android-apk.yml` در مخزن باید یک بار با نسخهٔ جدید عوض شود. لینک [`replace-workflow-link.txt`](replace-workflow-link.txt) صفحهٔ ویرایش همان فایل را با محتوای جدید باز می‌کند؛ اگر محتوا از پیش پر نشده بود: کل متن را انتخاب و پاک کن، سپس محتوای [`android-apk.yml`](android-apk.yml) را جای‌گذاری کن و **Commit changes** را بزن.
+## چرا فایل workflow دستی در مخزن قرار گرفت؟
 
-چرا دستی؟ GitHub اجازه نمی‌دهد هیچ اپ/توکنی فایل داخل `.github/workflows/` بسازد یا تغییر دهد مگر با مجوز `workflows`. در این محیط، گواهی TLS گیت‌هاب را پروکسی سندباکس صادر می‌کند (`O = E2B, CN = api.github.com`)، پس هر توکنی که وارد شود با اعتبارنامهٔ اتوماسیون جایگزین می‌شود. سه مسیر مستقل امتحان شد و همه با `Resource not accessible by integration` رد شدند: `PUT /contents/...`، `POST /git/trees` و GraphQL `createCommitOnBranch`.
+GitHub اجازه نمی‌دهد هیچ اپ/توکنی فایل داخل `.github/workflows/` بسازد یا تغییر دهد مگر با مجوز `workflows`. در این محیط گواهی TLS گیت‌هاب را پروکسی سندباکس صادر می‌کند (`O = E2B, CN = api.github.com`)، پس هر توکنی با اعتبارنامهٔ اتوماسیون جایگزین می‌شود؛ سه مسیر مستقل امتحان شد و همه با `Resource not accessible by integration` رد شدند (`PUT /contents/...`، `POST /git/trees`، GraphQL `createCommitOnBranch`). یک بار جای‌گذاری دستی انجام شد و از این پس لازم نیست.
 
-## بعد از اجرا
+## اجرای محلی
 
-- **موفق**: artifact با نام `hamghadam-debug-apk` و همچنین Release با تگ `debug-<n>`.
-- **ناموفق**: در تب Actions، مرحلهٔ «Build and test» خطاهای خلاصه‌شده را نشان می‌دهد؛ همان‌ها را در issue/PR بفرست یا بگو تا از API بخوانم و رفع کنم.
+```bash
+bash hamghadam-source/ci/build.sh      # نیازمند JDK 17 و Android SDK 35
+```
+
+اسکریپت مسیرها را نسبت به ریشهٔ مخزن حل می‌کند، پس از هر پوشه‌ای قابل اجراست. برای اجرای محلی می‌توانی `PROJECT_DIR` را هم بدهی.
 
 ## نکته‌ها
 
 - خروجی APK **debug** است، نه نسخهٔ امضاشدهٔ انتشار؛ نصب روی گوشی اجازهٔ «نصب از منبع نامعتبر» می‌خواهد.
-- اسکریپت قبل از ساخت، تست‌های JVM را اجرا می‌کند (`:app:testDebugUnitTest`).
-- مسیر پروژه: `hamghadam-source/apps/android`. اسکریپت مسیرها را نسبت به ریشهٔ مخزن حل می‌کند، پس از هر پوشه‌ای قابل اجراست.
-- اجرای محلی: `bash hamghadam-source/ci/build.sh` (به JDK 17 و Android SDK نیاز دارد).
+- `retention-days: 30` برای artifact؛ Release محدودیت زمانی ندارد.
+- برای نسخهٔ امضاشده، keystore در Secrets و یک `signingConfig` لازم است (هنوز پیاده‌سازی نشده).
