@@ -11,9 +11,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!--
+        Auto Backup is off on purpose: the Room database is encrypted with a key
+        held in the Android Keystore, and Keystore keys are never part of a
+        cloud backup. A restored copy would therefore be unreadable (or, worse,
+        silently replaced by an empty database). The app ships its own
+        AES-256-GCM backup/restore flow instead.
+    -->
     <application
         android:name=".HamghadamApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"

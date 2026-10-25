@@ -33,7 +33,12 @@ class SecurityStore(context: Context) {
     val biometricEnabled: Boolean
         get() = runCatching { prefs.getBoolean(KEY_BIOMETRIC, false) }.getOrDefault(false)
 
-    fun setPin(pin: String) {
+    /**
+     * @return false when the platform crypto provider failed. In that case
+     * nothing is stored — the old code wrote an all-zero hash, which any PIN
+     * would satisfy (audit C-12).
+     */
+    fun setPin(pin: String): Boolean = runCatching {
         val normalized = normalizePin(pin)
         val salt = PinHasher.newSalt()
         val hash = PinHasher.derive(normalized, salt)
@@ -43,7 +48,7 @@ class SecurityStore(context: Context) {
             .putInt(KEY_FAILURES, 0)
             .putLong(KEY_BLOCKED_UNTIL, 0L)
             .apply()
-    }
+    }.isSuccess
 
     fun verify(pin: String): Boolean {
         val saltRaw = runCatching { prefs.getString(KEY_SALT, null) }.getOrNull() ?: return false
@@ -148,14 +153,18 @@ object PinHasher {
 
     fun newSalt(): ByteArray = ByteArray(SALT_BYTES).also { SecureRandom().nextBytes(it) }
 
-    fun derive(pin: String, salt: ByteArray, iterations: Int = ITERATIONS): ByteArray = runCatching {
+    /**
+     * @throws java.security.GeneralSecurityException when the provider is
+     * missing, so callers fail closed instead of accepting an all-zero hash.
+     */
+    fun derive(pin: String, salt: ByteArray, iterations: Int = ITERATIONS): ByteArray {
         val spec = PBEKeySpec(pin.toCharArray(), salt, iterations, KEY_BITS)
         try {
-            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
         } finally {
             spec.clearPassword()
         }
-    }.getOrElse { ByteArray(KEY_BITS / 8) }
+    }
 
     /** Constant-time comparison, so a wrong PIN cannot be guessed byte by byte. */
     fun verify(
@@ -163,7 +172,9 @@ object PinHasher {
         salt: ByteArray,
         expected: ByteArray,
         iterations: Int = ITERATIONS,
-    ): Boolean = MessageDigest.isEqual(expected, derive(pin, salt, iterations))
+    ): Boolean = runCatching {
+        MessageDigest.isEqual(expected, derive(pin, salt, iterations))
+    }.getOrDefault(false)
 
     /**
      * Failure 1 → 2s, 2 → 4s, 3 → 8s, 4 → 16s, 5 → 32s, 6+ → 60s.

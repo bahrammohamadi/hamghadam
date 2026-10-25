@@ -949,7 +949,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _lock.update { it.copy(error = "PIN باید ۴ تا ۸ رقم باشد") }
             return false
         }
-        security.setPin(pin)
+        if (!security.setPin(pin)) {
+            _lock.update { it.copy(error = "امنیت دستگاه پشتیبانی نمی‌شود") }
+            return false
+        }
         security.resetFailures()
         _lock.value = LockUiState(enabled = true, locked = false)
         viewModelScope.launch(actionErrors) { _events.send(UiEvent.Message("قفل ورود فعال شد")) }

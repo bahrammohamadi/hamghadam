@@ -404,18 +404,26 @@ class TaskRepository(
             templates = decoded.templates.map { it.copy(profileId = owner) },
             focusSessions = decoded.focusSessions.map { it.copy(profileId = owner) },
         )
-        taskDao.deleteAll()
-        projectDao.deleteAll()
-        habitDao.deleteAllHabits()
-        habitDao.deleteAllLogs()
-        eventDao.deleteAll()
-        focusDao.deleteAll()
-        // Built-in templates stay; user templates are replaced by the backup.
-        templateDao.loadAll().filterNot { it.builtin }.forEach { templateDao.deleteById(it.id) }
+        // Only the active account is replaced. Deleting every row (the old
+        // behaviour) silently wiped all other local accounts during a restore
+        // (audit C-15).
+        taskDao.deleteByProfile(owner)
+        projectDao.deleteByProfile(owner)
+        habitDao.deleteHabitsByProfile(owner)
+        habitDao.deleteOrphanLogs()
+        eventDao.deleteByProfile(owner)
+        focusDao.deleteByProfile(owner)
+        // Built-in templates stay; only this account's user templates are replaced.
+        templateDao.loadAll()
+            .filter { !it.builtin && it.profileId == owner }
+            .forEach { templateDao.deleteById(it.id) }
         taskDao.upsertAll(payload.tasks)
         projectDao.upsertAll(payload.projects)
         habitDao.upsertHabits(payload.habits)
-        habitDao.insertLogs(payload.habitLogs)
+        // A crafted backup must not attach check-ins to habits of another
+        // account: keep only logs whose habit is part of this payload.
+        val restoredHabitIds = payload.habits.mapTo(mutableSetOf()) { it.id }
+        habitDao.insertLogs(payload.habitLogs.filter { it.habitId in restoredHabitIds })
         payload.personalEvents.forEach { eventDao.upsert(it) }
         if (payload.templates.isNotEmpty()) templateDao.upsertAll(payload.templates)
         payload.focusSessions.forEach { focusDao.upsert(it) }
