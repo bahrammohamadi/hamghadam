@@ -189,13 +189,31 @@ fi
 # ---------------------------------------------------------------- release (best effort)
 if [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
         && [ "${GITHUB_EVENT_NAME:-}" != "pull_request" ]; then
-    say "انتشار APK به‌صورت prerelease"
-    TAG="debug-${GITHUB_RUN_NUMBER:-0}"
-    gh release create "$TAG" "$APK#hamghadam-$TAG.apk" \
-        --title "هم‌قدم $TAG (debug)" \
-        --notes "APK دیباگ خودکار از commit $(printf '%s' "${GITHUB_SHA:-unknown}" | cut -c1-7).
-برای نصب، اجازهٔ «نصب از منبع نامعتبر» لازم است. این نسخه امضای انتشار ندارد." \
-        --prerelease >>"$SDK_LOG" 2>&1 || echo "::warning::ساخت release ممکن نشد (مجوز contents: write؟)"
+    say "انتشار APK در release غلتان"
+    TAG="${RELEASE_TAG:-latest-debug}"
+    SHA7=$(printf '%s' "${GITHUB_SHA:-unknown}" | cut -c1-7)
+    NOTES=$(cat <<TXT
+آخرین APK دیباگ ساخته‌شده از شاخهٔ \`${GITHUB_REF_NAME:-?}\` (commit ${SHA7}، اجرای #${GITHUB_RUN_NUMBER:-0}).
+
+- شناسهٔ بسته: \`ir.hamghadam.app\` — نسخهٔ 0.3.0 (versionCode 3)
+- حداقل اندروید: 8.0 (API 26)
+- حجم: \`${APK_SIZE}\` بایت
+- امضا: debug (برای تست، بدون امضای انتشار)
+
+نصب: فایل \`app-debug.apk\` را دانلود کن، «نصب از منبع نامعتبر» را برای مرورگر فعال کن و نصب کن.
+این release با هر بیلد موفق به‌روزرسانی می‌شود.
+TXT
+    )
+    if gh release view "$TAG" >/dev/null 2>&1; then
+        gh release upload "$TAG" "$APK#app-debug.apk" --clobber >>"$SDK_LOG" 2>&1 \
+            && gh release edit "$TAG" --title "هم‌قدم — آخرین APK دیباگ" --notes "$NOTES" --prerelease >>"$SDK_LOG" 2>&1 \
+            || echo "::warning::به‌روزرسانی release ممکن نشد (مجوز contents: write؟)"
+    else
+        gh release create "$TAG" "$APK#app-debug.apk" \
+            --title "هم‌قدم — آخرین APK دیباگ" --notes "$NOTES" --prerelease >>"$SDK_LOG" 2>&1 \
+            || echo "::warning::ساخت release ممکن نشد (مجوز contents: write؟)"
+    fi
+    echo "::notice::release: ${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-}/releases/tag/$TAG"
 fi
 
 say "تمام"

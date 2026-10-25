@@ -10,10 +10,10 @@ workflow در `.github/workflows/android-apk.yml` قرار دارد و روی ه
 | اجرای `40166923073` (push) و `40166925367` (PR) | ✅ سبز، ~۳ دقیقه |
 | تست‌های JVM | ✅ `:app:testDebugUnitTest` |
 | APK دیباگ | ✅ `app-debug.apk` (~۹.۹MB) |
-| انتشار | ✅ Release با تگ `debug-<شمارهٔ اجرا>` (prerelease) |
+| انتشار | ✅ release غلتان `latest-debug` (با هر بیلد موفق به‌روزرسانی می‌شود) |
 | Artifact | ✅ `hamghadam-debug-apk` (۳۰ روز نگهداری) |
 
-دانلود APK: صفحهٔ [Releases](https://github.com/bahrammohamadi/hamghadam/releases) → آخرین `debug-*` → `app-debug.apk`.
+دانلود APK: [releases/tag/latest-debug](https://github.com/bahrammohamadi/hamghadam/releases/tag/latest-debug) → `app-debug.apk`.
 
 ## چه چیزی در build.sh انجام می‌شود
 
@@ -22,7 +22,7 @@ workflow در `.github/workflows/android-apk.yml` قرار دارد و روی ه
 3. `:app:testDebugUnitTest` سپس `:app:assembleDebug` (Gradle 8.9، JDK 17).
 4. در صورت شکست: خطاهای Gradle به‌صورت `::error::` منتشر می‌شوند (از API گیت‌هاب خواندنی‌اند) و ۸۰ خط آخر لاگ در Step Summary می‌آید.
 5. **تأیید محتوای APK پیش از انتشار:** سالم بودن ZIP، وجود `AndroidManifest.xml`، `classes.dex` و `resources.arsc`، حداقل حجم ۱MB، و خواندن `aapt2 dump badging`؛ شناسهٔ بسته باید دقیقاً `ir.hamghadam.app` باشد و APK باید حداقل یک activity قابل اجرا (launcher) داشته باشد. اگر هر کدام رد شود جاب fail می‌شود و Release ساخته نمی‌شود.
-6. در صورت موفقیت: ساخت Release با تگ `debug-<n>` و پیوست APK (نیازمند `permissions: contents: write` که در workflow تنظیم شده).
+6. در صورت موفقیت: به‌روزرسانی release غلتان `latest-debug` با APK جدید (نیازمند `permissions: contents: write` که در workflow تنظیم شده). به‌جای ساخت یک release برای هر اجرا، همان یکی به‌روز می‌شود تا صفحهٔ Releases شلوغ نشود.
 
 نمونهٔ خروجی تأیید از آخرین اجرا (annotation قابل خواندن از API):
 
