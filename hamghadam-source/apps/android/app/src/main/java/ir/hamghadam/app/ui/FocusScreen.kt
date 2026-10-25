@@ -47,6 +47,7 @@ import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.PersianCalendar
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.PillChip
 import ir.hamghadam.app.ui.components.ProgressRing
@@ -314,8 +315,7 @@ fun FocusScreen(
                 EmptyState(
                     title = "هنوز جلسه‌ای ثبت نشده",
                     subtitle = "یک بلوک ۲۵ دقیقه‌ای شروع کن؛ نتایج همین‌جا جمع می‌شوند.",
-                    emoji = "⏳",
-                )
+                    emoji = "⏳", art = SectionArtwork.FOCUS,)
             }
         } else {
             items(sessions.take(6), key = { it.id }) { session ->

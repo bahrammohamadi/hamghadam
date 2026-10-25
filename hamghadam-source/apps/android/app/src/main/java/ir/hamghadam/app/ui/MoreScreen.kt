@@ -38,6 +38,8 @@ import ir.hamghadam.app.ui.components.CircleIconButton
 import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.ScreenHeader
+import ir.hamghadam.app.ui.components.SectionArt
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.SectionTitle
 import ir.hamghadam.app.ui.components.softShadow
 import ir.hamghadam.app.ui.theme.CardRadius
@@ -91,11 +93,11 @@ fun MoreScreen(
                     ) {
                         Box(
                             Modifier
-                                .size(46.dp)
-                                .background(Color.White.copy(alpha = 0.22f), CircleShape),
+                                .size(48.dp)
+                                .background(Color.White.copy(alpha = 0.26f), CircleShape),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(profile.emoji, fontSize = 20.sp)
+                            Text(profile.emoji, fontSize = 21.sp)
                         }
                         Spacer(Modifier.width(11.dp))
                         Column(Modifier.weight(1f)) {
@@ -106,9 +108,9 @@ fun MoreScreen(
                                 fontSize = 11.sp,
                             )
                         }
-                        SurfaceishBadge()
+                        SectionArt(art = SectionArtwork.PROFILE, size = 58.dp)
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(14.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         MiniStat("کار باز", PersianText.number(openTasks, digits))
                         MiniStat("رویداد", PersianText.number(eventCount, digits))

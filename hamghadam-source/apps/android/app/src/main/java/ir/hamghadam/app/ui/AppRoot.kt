@@ -4,6 +4,7 @@ import android.content.Intent
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +51,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import ir.hamghadam.app.ui.components.darken
+import ir.hamghadam.app.ui.components.lighten
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -521,9 +525,24 @@ private fun FloatingNavBar(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(64.dp)
-                .softShadow(radius = 32.dp, elevation = 18.dp)
+                .softShadow(radius = 32.dp, elevation = 20.dp)
                 .clip(RoundedCornerShape(32.dp))
-                .background(MaterialTheme.colorScheme.surface),
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.surface.lighten(0.06f),
+                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.surface.darken(0.05f),
+                        ),
+                    ),
+                )
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.55f), Color.Transparent),
+                    ),
+                    shape = RoundedCornerShape(32.dp),
+                ),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -536,10 +555,19 @@ private fun FloatingNavBar(
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .size(56.dp)
-                .softShadow(radius = 28.dp, elevation = 18.dp)
+                .size(58.dp)
+                .softShadow(radius = 29.dp, elevation = 20.dp)
                 .clip(CircleShape)
-                .background(HamghadamPalette.Scrim)
+                .background(
+                    Brush.linearGradient(
+                        listOf(HamghadamPalette.Violet, HamghadamPalette.VioletDeep, HamghadamPalette.Terracotta),
+                    ),
+                )
+                .border(
+                    1.dp,
+                    Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.6f), Color.Transparent)),
+                    CircleShape,
+                )
                 .clickable { onAdd() },
             contentAlignment = Alignment.Center,
         ) {
@@ -571,7 +599,19 @@ private fun NavItem(
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .background(if (active) HamghadamPalette.VioletSoft else Color.Transparent, CircleShape),
+                .background(
+                    if (active) {
+                        Brush.verticalGradient(
+                            listOf(
+                                HamghadamPalette.VioletSoft.darken(0.06f),
+                                HamghadamPalette.VioletSoft,
+                            ),
+                        )
+                    } else {
+                        Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+                    },
+                    CircleShape,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

@@ -42,6 +42,7 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.domain.TaskQuery
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.PillChip
 import ir.hamghadam.app.ui.components.ScreenHeader
@@ -230,8 +231,7 @@ fun TasksScreen(
                         TaskFilter.ALL -> if (query.isBlank()) "فهرست خالی است" else "چیزی پیدا نشد"
                     },
                     subtitle = if (query.isBlank()) "با دکمهٔ + یک کار تازه بساز." else "عبارت دیگری را امتحان کن.",
-                    emoji = "🗂️",
-                )
+                    emoji = "🗂️", art = SectionArtwork.TASKS,)
             }
         } else {
             items(visible, key = { it.id }) { task ->

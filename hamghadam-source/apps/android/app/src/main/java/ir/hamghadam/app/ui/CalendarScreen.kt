@@ -64,6 +64,7 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.toDraft
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.PillChip
@@ -189,8 +190,7 @@ fun CalendarScreen(
                 EmptyState(
                     title = "رویدادی ثبت نشده",
                     subtitle = "مناسبت‌های رسمی و فرهنگی آفلاین همراه اپ هستند؛ می‌توانی رویداد شخصی هم اضافه کنی.",
-                    emoji = "🗓️",
-                )
+                    emoji = "🗓️", art = SectionArtwork.CALENDAR,)
             }
         } else {
             items(selectedEvents, key = { it.id }) { event ->
@@ -223,7 +223,7 @@ fun CalendarScreen(
         if (selectedTasks.isEmpty()) {
             item {
                 HamghadamCard {
-                    EmptyState(title = "کاری برای این روز نیست", subtitle = "روی «+ کار» بزن تا برای همین روز بسازی.", emoji = "☕")
+                    EmptyState(title = "کاری برای این روز نیست", subtitle = "روی «+ کار» بزن تا برای همین روز بسازی.", emoji = "☕", art = SectionArtwork.CALENDAR)
                 }
             }
         } else {

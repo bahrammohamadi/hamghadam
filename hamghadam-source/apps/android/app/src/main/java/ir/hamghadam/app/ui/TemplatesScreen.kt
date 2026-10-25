@@ -36,6 +36,7 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.PillChip
 import ir.hamghadam.app.ui.components.ScreenHeader
@@ -95,8 +96,7 @@ fun TemplatesScreen(
                 EmptyState(
                     title = "تمپلیت شخصی نداری",
                     subtitle = "از دکمهٔ «+ تازه» یا از داخل ویرایشگر کار، یک قالب بساز.",
-                    emoji = "🧩",
-                )
+                    emoji = "🧩", art = SectionArtwork.TEMPLATES,)
             }
         } else {
             items(custom, key = { it.id }) { template ->

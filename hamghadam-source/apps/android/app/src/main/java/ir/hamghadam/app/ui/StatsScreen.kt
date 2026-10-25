@@ -38,6 +38,7 @@ import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.domain.TaskQuery
 import ir.hamghadam.app.domain.TaskStats
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
@@ -292,8 +293,7 @@ fun StatsScreen(
                     EmptyState(
                         title = "هنوز لیستی نساخته‌ای",
                         subtitle = "با ساخت لیست، توزیع کارها هم در این صفحه دیده می‌شود.",
-                        emoji = "📁",
-                    )
+                        emoji = "📁", art = SectionArtwork.STATS,)
                 }
             }
         }

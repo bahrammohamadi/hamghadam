@@ -49,6 +49,7 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.TaskQuery
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
 
@@ -119,8 +120,7 @@ fun HabitsScreen(
             item {
                 EmptyState(
                     title = "هنوز عادتی نساخته‌ای",
-                    subtitle = "عادت‌ها را هر روز با یک ضربه ثبت کن و زنجیره‌ات را ببین.",
-                )
+                    subtitle = "عادت‌ها را هر روز با یک ضربه ثبت کن و زنجیره‌ات را ببین.", art = SectionArtwork.HABITS,)
             }
         } else {
             item { SectionTitle("این هفته") }

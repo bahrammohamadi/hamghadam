@@ -271,17 +271,28 @@ fun MetaLabel(text: String, tint: Color = MaterialTheme.colorScheme.onSurfaceVar
 }
 
 @Composable
-fun EmptyState(title: String, subtitle: String, modifier: Modifier = Modifier, emoji: String = "🌿") {
+fun EmptyState(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    emoji: String = "🌿",
+    art: Int? = null,
+) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(vertical = 26.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier = Modifier
-                .size(54.dp)
-                .background(MaterialTheme.colorScheme.surface, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) { Text(emoji, fontSize = 24.sp) }
+        if (art != null) {
+            // Soft-clay illustration replaces the emoji when the section has one.
+            SectionArt(art = art, size = 92.dp)
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Text(emoji, fontSize = 24.sp) }
+        }
         Spacer(Modifier.height(10.dp))
         Text(title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))

@@ -1,5 +1,6 @@
 package ir.hamghadam.app.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +45,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.hamghadam.app.data.AppSettings
@@ -61,16 +64,19 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.QuickAddParser
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.ui.components.Badge
+import ir.hamghadam.app.ui.components.ClayBanner
+import ir.hamghadam.app.ui.components.ClayCard
+import ir.hamghadam.app.ui.components.ClayTile
+import ir.hamghadam.app.ui.components.HamghadamCard
+import ir.hamghadam.app.ui.components.SectionArt
+import ir.hamghadam.app.ui.components.SectionArtwork
+import ir.hamghadam.app.ui.components.SoftCard
 import ir.hamghadam.app.ui.components.CircleIconButton
 import ir.hamghadam.app.ui.components.EmptyState
-import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.MiniBars
-import ir.hamghadam.app.ui.components.OverviewTile
 import ir.hamghadam.app.ui.components.ProgressRing
-import ir.hamghadam.app.ui.components.QuickAction
 import ir.hamghadam.app.ui.components.SectionTitle
-import ir.hamghadam.app.ui.components.SoftCard
 import ir.hamghadam.app.ui.components.TimelineRow
 import ir.hamghadam.app.ui.components.softShadow
 import ir.hamghadam.app.ui.theme.CardRadius
@@ -151,6 +157,22 @@ fun HomeScreen(
         }
 
         item {
+            ClayBanner(
+                title = "امروز، هم‌قدم",
+                subtitle = if (openToday > 0) {
+                    "${PersianText.number(openToday, digits)} کار باز و ${PersianText.number(focusMinutesToday, digits)} دقیقه تمرکز"
+                } else {
+                    "همهٔ کارهای امروز انجام شده؛ یک قدم دیگر بساز"
+                },
+                art = SectionArtwork.HOME,
+                startColor = HamghadamPalette.Violet,
+                endColor = HamghadamPalette.Terracotta,
+                action = if (openToday > 0) "دیدن کارهای امروز" else "افزودن کار تازه",
+                onClick = onOpenTasks,
+            )
+        }
+
+        item {
             DailyTaskCard(
                 done = doneToday,
                 total = todayTasks.size,
@@ -205,46 +227,77 @@ fun HomeScreen(
             )
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OverviewTile(
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ClayTile(
+                        title = "کارهای امروز",
+                        subtitle = "باز از ${PersianText.number(todayTasks.size, digits)}",
                         value = PersianText.number(openToday, digits),
-                        label = "کار امروز",
-                        hint = "باز از ${PersianText.number(todayTasks.size, digits)}",
-                        tint = HamghadamPalette.Violet,
-                        soft = HamghadamPalette.VioletSoft,
+                        art = SectionArtwork.TASKS,
+                        color = HamghadamPalette.Terracotta,
                         onClick = onOpenTasks,
+                        tilt = -1.6f,
                         modifier = Modifier.weight(1f),
                     )
-                    OverviewTile(
+                    ClayTile(
+                        title = "دقیقه تمرکز",
+                        subtitle = "هدف ${PersianText.number(settings.focusGoalMinutes, digits)}",
                         value = PersianText.number(focusMinutesToday, digits),
-                        label = "دقیقه تمرکز",
-                        hint = "هدف ${PersianText.number(settings.focusGoalMinutes, digits)}",
-                        tint = HamghadamPalette.Terracotta,
-                        soft = HamghadamPalette.Peach,
+                        art = SectionArtwork.FOCUS,
+                        color = HamghadamPalette.Violet,
                         onClick = onOpenFocus,
+                        tilt = 1.6f,
                         modifier = Modifier.weight(1f),
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OverviewTile(
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ClayTile(
+                        title = "پروژه‌ها",
+                        subtitle = "لیست‌های فعال",
                         value = PersianText.number(projects.size, digits),
-                        label = "پروژه‌ها",
-                        hint = "لیست‌های فعال",
-                        tint = HamghadamPalette.Sky,
-                        soft = HamghadamPalette.SkySoft,
+                        art = SectionArtwork.CALENDAR,
+                        color = HamghadamPalette.Sky,
                         onClick = onOpenTasks,
+                        tilt = 1.2f,
+                        height = 132.dp,
+                        artSize = 64.dp,
                         modifier = Modifier.weight(1f),
                     )
-                    OverviewTile(
-                        value = PersianText.number(openTotal, digits),
-                        label = "همهٔ کارها",
-                        hint = "انجام‌نشده",
-                        tint = HamghadamPalette.Olive,
-                        soft = HamghadamPalette.OliveSoft,
-                        onClick = onOpenTasks,
+                    ClayTile(
+                        title = "عادت‌ها",
+                        subtitle = "${PersianText.number(habitsDoneToday, digits)} از ${PersianText.number(habits.size, digits)} امروز",
+                        value = null,
+                        art = SectionArtwork.HABITS,
+                        color = HamghadamPalette.Olive,
+                        onClick = onOpenHabits,
+                        tilt = -1.2f,
+                        height = 132.dp,
+                        artSize = 64.dp,
                         modifier = Modifier.weight(1f),
                     )
+                }
+                ClayCard(onClick = onOpenStats, contentPadding = 12.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SectionArt(art = SectionArtwork.STATS, size = 66.dp)
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = "گزارش هفته",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = "${PersianText.number(openTotal, digits)} کار باز • ${PersianText.number(focusWeek.sumOf { it.minutes }, digits)} دقیقه تمرکز",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            text = "‹",
+                            fontSize = 20.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -300,6 +353,7 @@ fun HomeScreen(
                         title = "امروز خالی است",
                         subtitle = "یک کار کوچک بنویس؛ ثبت سریع فارسی هم کار می‌کند.",
                         emoji = "🌤️",
+                        art = SectionArtwork.TASKS,
                     )
                 }
             } else {
@@ -395,7 +449,7 @@ private fun DailyTaskCard(
     onOpenTasks: () -> Unit,
 ) {
     val progress = if (total <= 0) 0f else done.toFloat() / total.toFloat()
-    SoftCard(onClick = onOpenTasks) {
+    ClayCard(onClick = onOpenTasks) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             ProgressRing(
                 progress = progress,
@@ -450,15 +504,15 @@ private fun QuickActionRow(
     onOpenHabits: () -> Unit,
     onOpenTemplates: () -> Unit,
 ) {
-    SoftCard {
+    ClayCard(contentPadding = 8.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            QuickAction("📝", "کارها", HamghadamPalette.Terracotta, onOpenTasks, Modifier.weight(1f))
-            QuickAction("🎯", "تمرکز", HamghadamPalette.Violet, onOpenFocus, Modifier.weight(1f))
-            QuickAction("🌱", "عادت‌ها", HamghadamPalette.Olive, onOpenHabits, Modifier.weight(1f))
-            QuickAction("🧩", "تمپلیت", HamghadamPalette.Amber, onOpenTemplates, Modifier.weight(1f))
+            ClayQuickAction(SectionArtwork.TASKS, "کارها", HamghadamPalette.Terracotta, onOpenTasks, Modifier.weight(1f))
+            ClayQuickAction(SectionArtwork.FOCUS, "تمرکز", HamghadamPalette.Violet, onOpenFocus, Modifier.weight(1f))
+            ClayQuickAction(SectionArtwork.HABITS, "عادت‌ها", HamghadamPalette.Olive, onOpenHabits, Modifier.weight(1f))
+            ClayQuickAction(SectionArtwork.TEMPLATES, "تمپلیت", HamghadamPalette.Amber, onOpenTemplates, Modifier.weight(1f))
         }
     }
 }
@@ -473,7 +527,7 @@ private fun FocusWeekCard(
     running: Boolean,
     onStart: () -> Unit,
 ) {
-    SoftCard(onClick = onStart) {
+    ClayCard(onClick = onStart) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "تمرکز این هفته",
@@ -682,5 +736,42 @@ private fun DailyChallengeCard(
                 }
             }
         }
+    }
+}
+
+/** One of the four quick actions, drawn as a clay token with its own 3D art. */
+@Composable
+private fun ClayQuickAction(
+    art: Int,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .background(
+                    Brush.radialGradient(listOf(tint.copy(alpha = 0.18f), Color.Transparent)),
+                    CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(art),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(46.dp),
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
