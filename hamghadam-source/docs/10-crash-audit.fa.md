@@ -63,7 +63,7 @@
 | **C-08** | S3 | functional correctness | `widget/Widgets.kt` | دکمهٔ ویجت با broadcast trampoline `startActivity` را صدا می‌زد؛ اندروید ۱۰+ آن را مسدود می‌کند (دکمهٔ مرده) | ✅ `PendingIntent.getActivity` مستقیم |
 | **C-09** | S3 | analysability | سراسر اپ | هیچ گزارش محلی از کرش نبود؛ کاربر نمی‌توانست متن خطا را بفرستد | ✅ `CrashLog` + دکمهٔ «ارسال گزارش خطای اخیر» در پنل کاربری |
 | **C-10** | S3 | recoverability | `data/DatabaseCrypto.kt` | تأیید رمزگذاری با `user_version >= 4` انجام می‌شد؛ DBهای ۰.۴/۰.۵ نسخهٔ ۲/۳ دارند و رمزگذاری بی‌صدا انجام نمی‌شد | ✅ آستانه به `>= 2` اصلاح شد |
-| **C-11** | S3 | recoverability | `data/AppDatabase.kt` | `fallbackToDestructiveMigration()` برای نسخه‌های ناشناخته داده را حذف می‌کند؛ مهاجرت‌ها روی دستگاه واقعی آزمون نشده‌اند | ⚠️ کاهش ریسک + ریسک باقی‌مانده (R2/R4) |
+| **C-11** | S3 | recoverability | `data/AppDatabase.kt` | `fallbackToDestructiveMigration()` برای نسخه‌های ناشناخته داده را حذف می‌کند؛ مهاجرت‌ها روی دستگاه واقعی آزمون نشده‌اند | ⚠️ کاهش ریسک + ریسک باقی‌مانده (R2/R4)؛ SQLها با انتیتی‌ها تطبیق داده شدند و طبق قاعدهٔ Room فقط DEFAULT اعلام‌شده در انتیتی مقایسه می‌شود (b/136019383)، پس `DEFAULT ''` در مهاجرت بی‌خطر است |
 | **C-12** | S4 | faultlessness / security | `data/Security.kt` (`PinHasher.derive`) | در صورت خطای PBKDF2، هش صفر برمی‌گردد؛ هر PINی قفل را باز می‌کرد (fail-open) | ✅ fail-closed + پیام خطا در `enableLock` |
 | **C-13** | S4 | maintainability | `ui/MoreScreen.kt` | شمارهٔ نسخه در متن UI دستی نوشته شده بود و از نسخهٔ واقعی عقب می‌افتاد | ✅ `BuildConfig.VERSION_NAME` |
 | **C-14** | S2 | recoverability | `AndroidManifest.xml` | `allowBackup=true` همراه با DB رمزگذاری‌شده با کلید Keystore: کلید در بکاپ ابری نیست، پس بازیابی دستگاه یک DB غیرقابل‌بازگشایی می‌سازد | ✅ Auto Backup خاموش شد؛ پشتیبان داخلی AES-GCM جای آن |
@@ -121,7 +121,9 @@
 | Android Lint | `:app:lintDebug` + تجزیهٔ XML در `ci/build.sh` | **۰ Fatal، ۰ Error**، ۴۱ هشدار؛ موارد MissingPermission با بررسی/محافظت صریح و `@SuppressLint` مستند |
 | ساخت APK | `:app:assembleDebug` | موفق (versionCode 11 / 0.6.2) |
 | بررسی ساختار APK | unzip + aapt2 badging در CI | موفق: manifest/dex/resources/events سالم |
-| نتیجهٔ نهایی CI (اجرای #72، commit `b528ac2`) | — | APK نسخهٔ 0.6.2 / versionCode 11، حجم ۲۸٬۸۸۴٬۰۴۵ بایت، `sha256 20d40f5b…0686ef` |
+| نتیجهٔ نهایی CI (اجرای #73، commit `98a9ca3`) | — | APK نسخهٔ 0.6.2 / versionCode 11، حجم ۲۸٬۸۸۴٬۰۴۹ بایت، `sha256 4b135b37…d82d47f` |
+
+> اگر پس از این اجرا فقط فایل‌های مستندات تغییر کنند، CI دوباره APK می‌سازد؛ کد یکسان است اما اثر انگشت فایل (sha256) می‌تواند متفاوت باشد. ملاک، نسخه و versionCode است.
 | تست‌های جدید | `CrashRegressionTest` (۶ تست)، `ProfileScreenCrashTest` (۱ تست) | سبز |
 
 `ci/build.sh` حالا مرحلهٔ lint را اجرا می‌کند، خطاهای `Fatal` را به annotation تبدیل می‌کند و build را می‌شکند؛ `abortOnError=false` فقط برای این است که خطاهای غیرکشنده هر push را متوقف نکنند.
