@@ -21,6 +21,7 @@ mkdir -p "$WORK_DIR"
 : > "$SDK_LOG"
 
 say() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+notice() { printf '::notice::%s\n' "$1"; }
 
 # ---------------------------------------------------------------- Android SDK
 find_sdk() {
@@ -146,7 +147,38 @@ fi
 
 APK="app/build/outputs/apk/debug/app-debug.apk"
 [ -f "$APK" ] || die "فایل APK ساخته نشد: $APK"
-echo "APK: $(ls -lh "$APK")"
+ls -lh "$APK" || true
+APK_SIZE=$(wc -c < "$APK" | tr -d ' ')
+say "بررسی محتوای APK"
+[ "$APK_SIZE" -gt 1000000 ] || die "حجم APK غیرعادی کم است: $APK_SIZE بایت"
+
+# ساختار ZIP و فایل‌های الزامی
+if command -v unzip >/dev/null 2>&1; then
+    unzip -t "$APK" > "$WORK_DIR/apk-test.log" 2>&1 || die_with_log "APK یک بستهٔ ZIP سالم نیست"
+    for f in AndroidManifest.xml classes.dex resources.arsc; do
+        unzip -l "$APK" 2>/dev/null | grep -q " $f" || die "فایل $f داخل APK نیست"
+    done
+    notice "APK ساختار سالم دارد (zip ok، manifest + dex + resources)"
+fi
+
+# مشخصات بسته با aapt2/aapt
+AAPT=""
+for c in "$SDK/build-tools/35.0.0/aapt2" "$SDK/build-tools/35.0.0/aapt" "${SM:+$(dirname "$SM")/aapt2}"; do
+    [ -n "$c" ] && [ -x "$c" ] && { AAPT="$c"; break; }
+done
+if [ -n "$AAPT" ]; then
+    BADGING=$("$AAPT" dump badging "$APK" 2>/dev/null | head -40)
+    echo "$BADGING" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|launchable-activity)" || true
+    PKG=$(printf '%s\n' "$BADGING" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -1)
+    VC=$(printf '%s\n' "$BADGING" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p" | head -1)
+    MINSDK=$(printf '%s\n' "$BADGING" | sed -n "s/^sdkVersion:'\\([^']*\\)'.*/\\1/p" | head -1)
+    LAUNCH=$(printf '%s\n' "$BADGING" | grep -c "^launchable-activity" || true)
+    notice "APK: package=${PKG:-?} versionCode=${VC:-?} minSdk=${MINSDK:-?} launcher=${LAUNCH:-0} size=${APK_SIZE}B"
+    [ "${PKG:-}" = "ir.hamghadam.app" ] || die "شناسهٔ بستهٔ APK غیرمنتظره است: ${PKG:-خالی}"
+    [ "${LAUNCH:-0}" -ge 1 ] || die "APK هیچ activity قابل اجرا (launcher) ندارد"
+else
+    echo "::warning::aapt2 پیدا نشد؛ بررسی مشخصات بسته انجام نشد"
+fi
 
 # ---------------------------------------------------------------- release (best effort)
 if [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
@@ -161,6 +193,6 @@ if [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
 fi
 
 say "تمام"
-{ echo "### ✅ APK ساخته شد"; echo "- تست‌ها: سبز"; echo "- فایل: \`$APK\`"; } \
+{ echo "### ✅ APK ساخته شد"; echo "- تست‌ها: سبز"; echo "- حجم: ${APK_SIZE} بایت"; echo "- فایل: \`$APK\`"; } \
     >> "${GITHUB_STEP_SUMMARY:-/dev/null}" 2>/dev/null
 exit 0
