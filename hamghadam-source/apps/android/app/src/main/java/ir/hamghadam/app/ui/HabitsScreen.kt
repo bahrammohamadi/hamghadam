@@ -49,6 +49,7 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.TaskQuery
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.ClayBanner
 import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
@@ -68,6 +69,9 @@ fun HabitsScreen(
     val digits = settings.persianDigits
     val week = remember(todayEpoch) { PersianCalendar.weekDays(today) }
     val logsByHabit = remember(logs) { logs.groupBy { it.habitId } }
+    val doneToday = remember(logs, todayEpoch, habits) {
+        habits.count { habit -> logs.any { it.habitId == habit.id && it.epochDay == todayEpoch } }
+    }
     var newHabit by rememberSaveable { mutableStateOf("") }
 
     LazyColumn(
@@ -77,10 +81,16 @@ fun HabitsScreen(
     ) {
         item { SimpleHeader("عادت‌ها", onBack) }
         item {
-            Text(
-                text = "${PersianText.number(habits.size, digits)} عادت روزانه • زنجیره‌ات را نشکن",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            ClayBanner(
+                title = "زنجیره‌ات را نشکن",
+                subtitle = "${PersianText.number(habits.size, digits)} عادت روزانه • " +
+                    "${PersianText.number(doneToday, digits)} انجام‌شدهٔ امروز",
+                art = SectionArtwork.HABITS,
+                startColor = HamghadamPalette.Olive,
+                endColor = HamghadamPalette.Teal,
+                onClick = { },
+                action = null,
+                artSize = 96.dp,
             )
         }
         item {

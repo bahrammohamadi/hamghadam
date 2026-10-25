@@ -47,6 +47,7 @@ import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.PersianCalendar
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.ClayCard
 import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.PillChip
@@ -103,14 +104,7 @@ fun FocusScreen(
                 art = SectionArtwork.FOCUS,)
         }
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .softShadow(radius = 24.dp, elevation = 12.dp),
-                shape = CardRadius.card,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            ) {
+            ClayCard(contentPadding = 0.dp) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp, horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
