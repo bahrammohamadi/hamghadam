@@ -429,20 +429,14 @@ fun ClayPill(text: String, color: Color, modifier: Modifier = Modifier) {
     }
 }
 
-/** Illustration used by empty states, at a friendlier size. */
-@Composable
-fun EmptyArt(@DrawableRes art: Int, size: Dp = 96.dp) {
-    SectionArt(art = art, size = size, modifier = Modifier.align(Alignment.CenterHorizontally))
-}
-
 /** Shared illustrations so screens do not repeat resource names. */
 object SectionArtwork {
-    const val HOME = R.drawable.art_home
-    const val TASKS = R.drawable.art_tasks
-    const val CALENDAR = R.drawable.art_calendar
-    const val FOCUS = R.drawable.art_focus
-    const val HABITS = R.drawable.art_habits
-    const val PROFILE = R.drawable.art_profile
-    const val TEMPLATES = R.drawable.art_templates
-    const val STATS = R.drawable.art_stats
+    val HOME = R.drawable.art_home
+    val TASKS = R.drawable.art_tasks
+    val CALENDAR = R.drawable.art_calendar
+    val FOCUS = R.drawable.art_focus
+    val HABITS = R.drawable.art_habits
+    val PROFILE = R.drawable.art_profile
+    val TEMPLATES = R.drawable.art_templates
+    val STATS = R.drawable.art_stats
 }
