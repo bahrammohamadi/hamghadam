@@ -68,7 +68,7 @@ object GoogleCalendarApi {
 
     /** Parses an `events.list` payload; unknown fields are ignored. */
     fun parseEvents(json: String): List<ExternalEventEntity> {
-        val root = SimpleJson.parse(json) as? Map<*, *> ?: return emptyList()
+        val root = runCatching { SimpleJson.parse(json) as? Map<*, *> }.getOrNull() ?: return emptyList()
         val items = root["items"] as? List<*> ?: return emptyList()
         val now = System.currentTimeMillis()
         return items.mapNotNull { raw ->
