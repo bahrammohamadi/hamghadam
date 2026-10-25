@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -615,25 +619,39 @@ fun TaskRow(
                 .padding(start = 12.dp, end = 6.dp, top = 11.dp, bottom = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // The 27dp circle is only the visual; the touch target is a full 48dp
+            // and exposes checkbox semantics for TalkBack.
             Box(
                 modifier = Modifier
-                    .size(27.dp)
-                    .background(if (done) HamghadamPalette.Olive else Color.Transparent, CircleShape)
-                    .border(
-                        width = if (done) 0.dp else 1.8.dp,
-                        color = if (done) HamghadamPalette.Olive else MaterialTheme.colorScheme.outline,
-                        shape = CircleShape,
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .toggleable(
+                        value = done,
+                        onValueChange = { onToggle() },
+                        role = Role.Checkbox,
                     )
-                    .clickable { onToggle() },
+                    .semantics { contentDescription = "تغییر وضعیت «${task.title}»" },
                 contentAlignment = Alignment.Center,
             ) {
-                if (done) {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = "انجام شد",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp),
-                    )
+                Box(
+                    modifier = Modifier
+                        .size(27.dp)
+                        .background(if (done) HamghadamPalette.Olive else Color.Transparent, CircleShape)
+                        .border(
+                            width = if (done) 0.dp else 1.8.dp,
+                            color = if (done) HamghadamPalette.Olive else MaterialTheme.colorScheme.outline,
+                            shape = CircleShape,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (done) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(11.dp))
