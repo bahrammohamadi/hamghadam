@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -156,7 +157,7 @@ fun ScreenHeader(
                 onClick = onSettings,
                 modifier = Modifier.padding(start = 8.dp),
             ) {
-                Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(19.dp))
+                Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -209,7 +210,11 @@ fun PillChip(
     val background = if (selected) tint else MaterialTheme.colorScheme.surface
     val foreground = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(
-        modifier = modifier.clickable { onClick() },
+        // 36dp tall is the Material chip height; the touch area is padded to 48dp
+        // by minimumInteractiveComponentSize so the target meets WCAG 2.5.8.
+        modifier = modifier
+            .heightIn(min = 36.dp)
+            .clickable { onClick() },
         shape = CardRadius.chip,
         color = background,
         border = if (selected) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
@@ -523,7 +528,7 @@ fun TimelineRow(
                     contentDescription = "انجام شد",
                     tint = Color.White,
                     modifier = Modifier
-                        .size(19.dp)
+                        .size(20.dp)
                         .background(tint, CircleShape)
                         .padding(4.dp),
                 )
@@ -627,7 +632,7 @@ fun TaskRow(
                         Icons.Filled.Check,
                         contentDescription = "انجام شد",
                         tint = Color.White,
-                        modifier = Modifier.size(15.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -660,7 +665,8 @@ fun TaskRow(
             if (task.priority == TaskEntity.PRIORITY_HIGH) {
                 Text("!", color = HamghadamPalette.Terracotta, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(34.dp)) {
+            // IconButton keeps the 48dp touch target; the glyph itself is 16dp.
+            IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Filled.Delete,
                     contentDescription = "حذف کار",

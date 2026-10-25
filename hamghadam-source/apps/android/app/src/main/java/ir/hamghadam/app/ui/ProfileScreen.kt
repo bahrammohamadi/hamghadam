@@ -215,7 +215,7 @@ fun ProfileScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             if (selected) {
-                                Icon(Icons.Filled.Check, contentDescription = accent.label, tint = Color.White, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Check, contentDescription = accent.label, tint = Color.White, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
@@ -342,7 +342,7 @@ fun ProfileScreen(
 
         item {
             Text(
-                text = "هم‌قدم ۰.۳.۰ • بدون سرور • بدون ردیابی",
+                text = "هم‌قدم ۰.۴.۰ • بدون سرور • بدون ردیابی",
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

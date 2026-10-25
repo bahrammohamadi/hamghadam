@@ -373,7 +373,7 @@ private fun MonthArrow(
             .clickable { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = description, modifier = Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onSurface)
+        Icon(icon, contentDescription = description, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface)
     }
 }
 

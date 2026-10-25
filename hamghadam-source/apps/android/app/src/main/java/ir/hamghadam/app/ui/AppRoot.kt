@@ -578,13 +578,13 @@ private fun NavItem(
                 tab.icon,
                 contentDescription = tab.label,
                 tint = if (active) HamghadamPalette.Violet else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(19.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
         Spacer(Modifier.height(3.dp))
         Text(
             text = tab.label,
-            fontSize = 9.sp,
+            fontSize = 10.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
             color = if (active) HamghadamPalette.Violet else MaterialTheme.colorScheme.onSurfaceVariant,
         )

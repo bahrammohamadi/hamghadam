@@ -365,7 +365,7 @@ fun SettingsScreen(
                                 Icons.Filled.Delete,
                                 contentDescription = "حذف لیست",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                                modifier = Modifier.size(17.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }

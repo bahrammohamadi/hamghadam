@@ -279,7 +279,7 @@ fun FocusScreen(
                         ) {
                             Text(
                                 text = if (day.minutes > 0) PersianText.number(day.minutes, digits) else "–",
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(Modifier.height(3.dp))
@@ -295,12 +295,12 @@ fun FocusScreen(
                             Spacer(Modifier.height(5.dp))
                             Text(
                                 text = PersianCalendar.weekdayInitial(date.dayOfWeek()),
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
                                 text = PersianText.number(date.day, digits),
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             )
                         }

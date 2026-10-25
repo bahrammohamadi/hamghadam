@@ -381,7 +381,7 @@ private fun HomeHeader(
             )
         }
         CircleIconButton(contentDescription = "تنظیمات", onClick = onSettings) {
-            Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(19.dp))
+            Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -559,7 +559,7 @@ private fun QuickAddCard(today: JalaliDate, digits: Boolean, onQuickAdd: (String
                     .clickable { submit() },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "ثبت کار", tint = Color.White, modifier = Modifier.size(22.dp))
+                Icon(Icons.Filled.Add, contentDescription = "ثبت کار", tint = Color.White, modifier = Modifier.size(24.dp))
             }
         }
         if (parsed != null && text.isNotBlank()) {

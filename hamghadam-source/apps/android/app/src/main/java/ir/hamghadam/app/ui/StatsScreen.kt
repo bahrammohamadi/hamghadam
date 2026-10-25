@@ -161,7 +161,7 @@ fun StatsScreen(
                         ) {
                             Text(
                                 text = PersianText.number(day.done, digits),
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 color = HamghadamPalette.Olive,
                             )
                             Spacer(Modifier.height(2.dp))
@@ -182,7 +182,7 @@ fun StatsScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = PersianCalendar.weekdayInitial(date.dayOfWeek()),
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -208,7 +208,7 @@ fun StatsScreen(
                         ) {
                             Text(
                                 text = if (day.minutes > 0) PersianText.number(day.minutes, digits) else "–",
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(Modifier.height(2.dp))
@@ -224,7 +224,7 @@ fun StatsScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = PersianCalendar.weekdayInitial(date.dayOfWeek()),
-                                fontSize = 9.sp,
+                                fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }

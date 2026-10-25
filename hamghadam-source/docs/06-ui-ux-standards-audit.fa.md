@@ -165,3 +165,28 @@ Modifier.size(24.dp) ×1    Modifier.size(16.dp) ×3    Modifier.size(15.dp) ×1
 2. `Dynamic color` (Material You) پیاده نشده؛ پالت دستی با ۶ طرح جای آن را گرفته است.
 3. نسخهٔ tablet/landscape بهینه نشده (چیدمان تک‌ستونه).
 4. رمزگذاری پایگاه‌داده و پشتیبان رمزدار باقی مانده است.
+
+---
+
+## ۹) وضعیت پیاده‌سازی پس از این دور (۰.۴.۰)
+
+| بند حسابرسی | وضعیت | جای اجرا |
+|---|---|---|
+| آیکون‌ها فقط در مقیاس ۱۶/۲۰/۲۴/۲۸ | انجام شد: ۱۵→۱۶، ۱۷→۱۶، ۱۹→۲۰، ۲۱→۲۰، ۲۲→۲۴ و ۳۴→۲۸ در همهٔ صفحه‌ها؛ دکمه‌های حذف به `IconButton` استاندارد (هدف ۴۸dp) برگشتند | `ui/**.kt` |
+| متن ≥ ۱۰sp | انجام شد: تمام `fontSize = 9.sp` و `8.sp` (۲۰ مورد) به ۱۰sp رسید | `ui/**` |
+| هدف لمسی ≥ ۴۸dp | `IconButton`های کوچک حذف شدند؛ چیپ‌ها ۳۶dp ارتفاع با ناحیهٔ لمسی استاندارد Material؛ خانه‌های نوار هفته با برچسب روز ≈۵۵dp | `ui/components/Common.kt` |
+| کنتراست WCAG AA | انجام شد: پالت ثانویه `#5C6274` (۶.۳۷:۱)، مرجانی `#C33722` (۴.۸۵:۱)، سبز `#1E7A45` (۵.۳۹:۱)، کهربایی `#8A5A00` (۵.۰۲:۱) | `ui/theme/Theme.kt` |
+| کانال‌های اعلان | انجام شد: `reminders_v1` (HIGH)، `focus_v1` (LOW، بی‌صدا)، `digest_v1` (DEFAULT)، `habits_v1` (DEFAULT)؛ کانال قدیمی حذف می‌شود | `notify/Notifications.kt` |
+| دکمه‌های اعلان | انجام شد: «انجام شد» + «۱۰ دقیقه بعد» (تعویق با AlarmManager، پایدار پس از مرگ پروسه) و گروه‌بندی با summary | `notify/ReminderReceiver.kt` |
+| حریم خصوصی اعلان | `VISIBILITY_PRIVATE` روی یادآورها؛ کانال تمرکز `showBadge=false` و `setSilent(true)` | `notify/*` |
+| سرویس پیش‌زمینه | `FocusService` با نوع `specialUse` و property توضیح‌دهنده؛ مجوزهای `FOREGROUND_SERVICE(_SPECIAL_USE)` | `AndroidManifest.xml` |
+| ویجت‌ها | «امروز» ۴×۲ و «تمرکز» ۲×۲ با RemoteViews، `updatePeriodMillis=30min`، بازآوری فوری با `WidgetUpdater` (debounce ۱.۲s) | `widget/Widgets.kt`, `res/layout/widget_*` |
+| مجوز اعلان | یک‌بار در اولین اجرا روی اندروید ۱۳+؛ رد کردن مجوز هیچ قابلیتی را نمی‌شکند | `MainActivity.kt` |
+| آیکون اپ | تطبیقی + مونوکروم (تم‌پذیر) + نسخهٔ ۵۱۲px فروشگاه | `res/drawable/ic_launcher_*`, `docs/assets/icon-512.png` |
+| چند حساب و قفل | پنل کاربری کامل، جداسازی داده با `profileId`، مهاجرت Room نسخهٔ ۴، قفل PIN با PBKDF2 | `data/Profile*.kt`, `data/Security.kt`, `ui/ProfileScreen.kt`, `ui/LockScreen.kt` |
+
+### آنچه همچنان باز است
+
+- اجرای واقعی روی دستگاه/لانچر و آزمون TalkBack و `fontScale = 2.0` انجام نشده است.
+- رمزنگاری پایگاه‌داده (SQLCipher) و پشتیبان رمزگذاری‌شده پیاده‌سازی نشده؛ PN قفل فقط دروازهٔ ورود اپ است.
+- مصرف باتری سرویس تمرکز و رفتار Doze در دستگاه واقعی سنجیده نشده است.

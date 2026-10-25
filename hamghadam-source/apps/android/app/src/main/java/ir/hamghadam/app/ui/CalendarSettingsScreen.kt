@@ -196,7 +196,7 @@ fun CalendarSettingsScreen(
                                 Icons.Filled.Delete,
                                 contentDescription = "حذف رویداد",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(17.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }

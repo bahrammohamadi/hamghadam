@@ -295,7 +295,7 @@ class TaskRepository(
     suspend fun deletePersonalEvent(id: String) = eventDao.deleteById(id)
 
     suspend fun loadPersonalEvents(): List<PersonalEventEntity> =
-        eventDao.loadAll().filter { it.profileId == activeProfileId }
+        eventDao.loadAll().ownedBy(activeProfileId) { row -> row.profileId }
 
     // -------------------------------------------------------------- focus
 
@@ -314,7 +314,7 @@ class TaskRepository(
     }
 
     suspend fun loadFocusSessions(): List<FocusSessionEntity> =
-        focusDao.loadAll().filter { it.profileId == activeProfileId }
+        focusDao.loadAll().ownedBy(activeProfileId) { row -> row.profileId }
 
     suspend fun focusDay(epochDay: Long): Pair<Int, Int> {
         val sessions = focusDao.loadAll().filter { it.epochDay == epochDay && it.profileId == activeProfileId }
@@ -374,13 +374,13 @@ class TaskRepository(
 
     suspend fun exportBackup(): String = BackupCodec.encode(
         BackupPayload(
-            tasks = taskDao.loadAll().filter { it.profileId == activeProfileId },
-            projects = projectDao.loadAll().filter { it.profileId == activeProfileId },
-            habits = habitDao.loadHabits().filter { it.profileId == activeProfileId },
+            tasks = taskDao.loadAll().ownedBy(activeProfileId) { row -> row.profileId },
+            projects = projectDao.loadAll().ownedBy(activeProfileId) { row -> row.profileId },
+            habits = habitDao.loadHabits().ownedBy(activeProfileId) { row -> row.profileId },
             habitLogs = habitDao.loadLogs(),
-            personalEvents = eventDao.loadAll().filter { it.profileId == activeProfileId },
-            templates = templateDao.loadAll().filterNot { it.builtin }.filter { it.profileId == activeProfileId },
-            focusSessions = focusDao.loadAll().filter { it.profileId == activeProfileId },
+            personalEvents = eventDao.loadAll().ownedBy(activeProfileId) { row -> row.profileId },
+            templates = templateDao.loadAll().filterNot { it.builtin }.ownedBy(activeProfileId) { row -> row.profileId },
+            focusSessions = focusDao.loadAll().ownedBy(activeProfileId) { row -> row.profileId },
             exportedAtEpochMillis = now(),
         ),
     )

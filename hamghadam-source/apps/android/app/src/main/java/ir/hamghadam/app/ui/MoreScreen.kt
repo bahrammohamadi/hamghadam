@@ -101,7 +101,7 @@ fun MoreScreen(
                         Column(Modifier.weight(1f)) {
                             Text(profile.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "${PersianText.number(profileCount, digits)} حساب • کاملاً آفلاین • نسخهٔ ۰.۳.۰",
+                                text = "${PersianText.number(profileCount, digits)} حساب • کاملاً آفلاین • نسخهٔ ۰.۴.۰",
                                 color = Color.White.copy(alpha = 0.82f),
                                 fontSize = 11.sp,
                             )
@@ -221,7 +221,7 @@ fun SimpleHeader(title: String, onBack: () -> Unit) {
             Icon(
                 Icons.Filled.KeyboardArrowLeft,
                 contentDescription = null,
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
         Spacer(Modifier.width(12.dp))

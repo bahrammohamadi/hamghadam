@@ -34,8 +34,8 @@ class SecurityStore(context: Context) {
         get() = prefs.getBoolean(KEY_BIOMETRIC, false)
 
     fun setPin(pin: String) {
-        val salt = ByteArray(SALT_BYTES).also { SecureRandom().nextBytes(it) }
-        val hash = derive(pin, salt)
+        val salt = PinHasher.newSalt()
+        val hash = PinHasher.derive(pin, salt)
         prefs.edit()
             .putString(KEY_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
             .putString(KEY_HASH, Base64.encodeToString(hash, Base64.NO_WRAP))
@@ -49,7 +49,7 @@ class SecurityStore(context: Context) {
         val hashRaw = prefs.getString(KEY_HASH, null) ?: return false
         val salt = runCatching { Base64.decode(saltRaw, Base64.NO_WRAP) }.getOrNull() ?: return false
         val expected = runCatching { Base64.decode(hashRaw, Base64.NO_WRAP) }.getOrNull() ?: return false
-        return MessageDigest.isEqual(expected, derive(pin, salt))
+        return PinHasher.verify(pin, salt, expected)
     }
 
     fun clearPin() {
@@ -82,7 +82,7 @@ class SecurityStore(context: Context) {
 
     fun registerFailure(): Int {
         val failures = prefs.getInt(KEY_FAILURES, 0) + 1
-        val delaySeconds = minOf(60L, 1L shl minOf(failures - 1, 5))
+        val delaySeconds = PinHasher.lockoutSeconds(failures)
         prefs.edit()
             .putInt(KEY_FAILURES, failures)
             .putLong(KEY_BLOCKED_UNTIL, System.currentTimeMillis() + delaySeconds * 1000L)
@@ -96,15 +96,6 @@ class SecurityStore(context: Context) {
 
     fun failureCount(): Int = prefs.getInt(KEY_FAILURES, 0)
 
-    private fun derive(pin: String, salt: ByteArray): ByteArray = runCatching {
-        val spec = PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, KEY_BITS)
-        try {
-            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
-        } finally {
-            spec.clearPassword()
-        }
-    }.getOrElse { ByteArray(32) }
-
     private companion object {
         const val KEY_HASH = "pin_hash"
         const val KEY_SALT = "pin_salt"
@@ -113,10 +104,43 @@ class SecurityStore(context: Context) {
         const val KEY_BIOMETRIC = "biometric"
         const val KEY_FAILURES = "failures"
         const val KEY_BLOCKED_UNTIL = "blocked_until"
-        const val SALT_BYTES = 16
-        const val ITERATIONS = 120_000
-        const val KEY_BITS = 256
+        const val SALT_BYTES = PinHasher.SALT_BYTES
+        const val ITERATIONS = PinHasher.ITERATIONS
+        const val KEY_BITS = PinHasher.KEY_BITS
     }
 }
 
 fun isPinValid(pin: String): Boolean = pin.length in 4..8 && pin.all { it.isDigit() }
+
+/**
+ * PBKDF2-HMAC-SHA256 helpers, extracted from the store so the crypto can be
+ * tested on a plain JVM without Android's SharedPreferences.
+ */
+object PinHasher {
+
+    const val SALT_BYTES = 16
+    const val ITERATIONS = 120_000
+    const val KEY_BITS = 256
+
+    fun newSalt(): ByteArray = ByteArray(SALT_BYTES).also { SecureRandom().nextBytes(it) }
+
+    fun derive(pin: String, salt: ByteArray, iterations: Int = ITERATIONS): ByteArray = runCatching {
+        val spec = PBEKeySpec(pin.toCharArray(), salt, iterations, KEY_BITS)
+        try {
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+        } finally {
+            spec.clearPassword()
+        }
+    }.getOrElse { ByteArray(KEY_BITS / 8) }
+
+    /** Constant-time comparison, so a wrong PIN cannot be guessed byte by byte. */
+    fun verify(pin: String, salt: ByteArray, expected: ByteArray): Boolean =
+        MessageDigest.isEqual(expected, derive(pin, salt))
+
+    /**
+     * Failure 1 → 2s, 2 → 4s, 3 → 8s, 4 → 16s, 5 → 32s, 6+ → 60s.
+     * Deliberately gentle: a longer lock mostly punishes the real owner.
+     */
+    fun lockoutSeconds(failures: Int): Long =
+        if (failures <= 0) 0L else minOf(60L, 1L shl minOf(failures - 1, 5))
+}
