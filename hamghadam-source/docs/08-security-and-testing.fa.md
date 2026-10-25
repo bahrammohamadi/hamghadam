@@ -19,7 +19,7 @@
 | `BackupCipherTest` | رمزگذاری/رمزگشایی AES-256-GCM، رمز نادرست، دست‌کاری فایل، سازگاری با JSON ساده | ۱۱ |
 | `DatabaseCryptoTest` | تشخیص فایل plaintext با هدر SQLite، پایداری کلید ۲۵۶ بیتی، رفتار بی‌خطر در نبود Keystore | ۷ |
 
-جمع کل: **۱۴۰ تست JVM در ۲۰ کلاس، صفر شکست** (اجرای CI `testDebugUnitTest`).
+جمع کل: **۱۴۷ تست JVM در ۲۱ کلاس، صفر شکست** (اجرای CI `testDebugUnitTest`).
 
 ### چرا Robolectric؟
 
