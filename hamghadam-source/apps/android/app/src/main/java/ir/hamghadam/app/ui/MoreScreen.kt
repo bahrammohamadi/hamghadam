@@ -103,7 +103,7 @@ fun MoreScreen(
                         Column(Modifier.weight(1f)) {
                             Text(profile.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "${PersianText.number(profileCount, digits)} حساب • کاملاً آفلاین • نسخهٔ ۰.۵.۰",
+                                text = "${PersianText.number(profileCount, digits)} حساب • کاملاً آفلاین • نسخهٔ ۰.۶.۰",
                                 color = Color.White.copy(alpha = 0.82f),
                                 fontSize = 11.sp,
                             )

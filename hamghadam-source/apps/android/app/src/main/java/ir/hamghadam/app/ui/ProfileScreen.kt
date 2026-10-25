@@ -376,7 +376,7 @@ fun ProfileScreen(
 
         item {
             Text(
-                text = "هم‌قدم ۰.۵.۰ • بدون سرور • بدون ردیابی",
+                text = "هم‌قدم ۰.۶.۰ • بدون سرور • بدون ردیابی",
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
