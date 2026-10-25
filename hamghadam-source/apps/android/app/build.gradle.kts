@@ -13,8 +13,8 @@ android {
         applicationId = "ir.hamghadam.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.4.0"
+        versionCode = 8
+        versionName = "0.5.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -46,6 +46,9 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        // 32-bit x86 is only used by ancient emulators; dropping its SQLCipher
+        // binary keeps the universal debug APK ~8 MB smaller.
+        jniLibs.excludes += "lib/x86/*"
     }
 }
 
