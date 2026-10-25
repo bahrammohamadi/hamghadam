@@ -198,7 +198,6 @@ if [ -f "$API_DIR/package.json" ]; then
         echo "::warning::Node در اجراکننده نصب نیست؛ تست‌های API اجرا نشدند"
     fi
 fi
-cd "$PROJECT_DIR" || die "بازگشت به مسیر پروژهٔ اندروید ناموفق بود"
 
 # ---------------------------------------------------------------- Android Lint
 say "Android Lint (دروازهٔ خطاهای کشنده)"
