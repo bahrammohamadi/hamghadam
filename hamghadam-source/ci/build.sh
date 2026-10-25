@@ -21,6 +21,7 @@ mkdir -p "$WORK_DIR"
 : > "$SDK_LOG"
 
 say() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+notice() { printf '::notice::%s\n' "$1"; }
 
 # ---------------------------------------------------------------- Android SDK
 find_sdk() {
@@ -146,7 +147,44 @@ fi
 
 APK="app/build/outputs/apk/debug/app-debug.apk"
 [ -f "$APK" ] || die "فایل APK ساخته نشد: $APK"
-echo "APK: $(ls -lh "$APK")"
+ls -lh "$APK" || true
+APK_SIZE=$(wc -c < "$APK" | tr -d ' ')
+say "بررسی محتوای APK"
+[ "$APK_SIZE" -gt 1000000 ] || die "حجم APK غیرعادی کم است: $APK_SIZE بایت"
+
+# ساختار ZIP و فایل‌های الزامی
+if command -v unzip >/dev/null 2>&1; then
+    unzip -t "$APK" > "$WORK_DIR/apk-test.log" 2>&1 || die_with_log "APK یک بستهٔ ZIP سالم نیست"
+    for f in AndroidManifest.xml classes.dex resources.arsc; do
+        unzip -l "$APK" 2>/dev/null | grep -q " $f" || die "فایل $f داخل APK نیست"
+    done
+    notice "APK ساختار سالم دارد (zip ok، manifest + dex + resources)"
+fi
+
+# مشخصات بسته با aapt2/aapt
+AAPT=""
+for c in "$SDK/build-tools/35.0.0/aapt2" "$SDK/build-tools/35.0.0/aapt" "${SM:+$(dirname "$SM")/aapt2}"; do
+    [ -n "$c" ] && [ -x "$c" ] && { AAPT="$c"; break; }
+done
+if [ -n "$AAPT" ]; then
+    # خروجی کامل در فایل ذخیره می‌شود: badging برای هر زبان یک application-label دارد
+    # و برش‌دادنش باعث می‌شد launchable-activity از انتها گم شود.
+    "$AAPT" dump badging "$APK" > "$WORK_DIR/badging.txt" 2>"$WORK_DIR/badging.err" || true
+    BADGING_FILE="$WORK_DIR/badging.txt"
+    grep -E "^(package|sdkVersion|minSdkVersion|targetSdkVersion|application-label|launchable-activity):?" \
+        "$BADGING_FILE" | head -12 || true
+    PKG=$(sed -n "s/^package: name='\\([^']*\\)'.*/\1/p" "$BADGING_FILE" | head -1)
+    VC=$(sed -n "s/.*versionCode='\\([^']*\\)'.*/\1/p" "$BADGING_FILE" | head -1)
+    MINSDK=$(sed -n "s/^\\(min\\)\\{0,1\\}sdkVersion:'\\([^']*\\)'.*/\\2/p" "$BADGING_FILE" | head -1)
+    [ -n "$MINSDK" ] || MINSDK=$(awk -F"'" '/sdkVersion/ {print $2; exit}' "$BADGING_FILE" 2>/dev/null || true)
+    [ -n "$MINSDK" ] || MINSDK=$(grep -m1 -oE "sdkVersion[^0-9]*[0-9]+" "$BADGING_FILE" 2>/dev/null | grep -oE "[0-9]+$" || true)
+    LAUNCH=$(grep -c "^launchable-activity" "$BADGING_FILE" || true)
+    notice "APK: package=${PKG:-?} versionCode=${VC:-?} launcher=${LAUNCH:-0} size=${APK_SIZE}B${MINSDK:+ minSdk=$MINSDK}"
+    [ "${PKG:-}" = "ir.hamghadam.app" ] || die "شناسهٔ بستهٔ APK غیرمنتظره است: ${PKG:-خالی}"
+    [ "${LAUNCH:-0}" -ge 1 ] || die "APK هیچ activity قابل اجرا (launcher) ندارد"
+else
+    echo "::warning::aapt2 پیدا نشد؛ بررسی مشخصات بسته انجام نشد"
+fi
 
 # ---------------------------------------------------------------- release (best effort)
 if [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
@@ -161,6 +199,6 @@ if [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
 fi
 
 say "تمام"
-{ echo "### ✅ APK ساخته شد"; echo "- تست‌ها: سبز"; echo "- فایل: \`$APK\`"; } \
+{ echo "### ✅ APK ساخته شد"; echo "- تست‌ها: سبز"; echo "- حجم: ${APK_SIZE} بایت"; echo "- فایل: \`$APK\`"; } \
     >> "${GITHUB_STEP_SUMMARY:-/dev/null}" 2>/dev/null
 exit 0
