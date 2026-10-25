@@ -219,6 +219,23 @@ fun ClayTile(
                 .padding(top = 6.dp, start = 4.dp)
                 .size(artSize),
         )
+        // Scrim under the caption. White text on a saturated clay colour can drop
+        // below 4.5:1 (coral is 3.38:1 on its own); darkening the bottom 45% by
+        // 24% lifts every tile colour used here above AA. Measured values live in
+        // docs/09-3d-clay-design.fa.md.
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(height * 0.62f)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.45f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.26f),
+                    ),
+                ),
+        )
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -347,6 +364,17 @@ fun ClayBanner(
                 .background(
                     Brush.linearGradient(
                         listOf(startColor.lighten(0.16f), startColor, endColor.darken(0.05f)),
+                    ),
+                ),
+        )
+        // Same reasoning as ClayTile: keep white copy above 4.5:1 on any palette.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(158.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.Black.copy(alpha = 0.22f), Color.Transparent),
                     ),
                 ),
         )

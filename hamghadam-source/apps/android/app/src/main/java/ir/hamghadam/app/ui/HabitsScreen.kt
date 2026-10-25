@@ -88,7 +88,7 @@ fun HabitsScreen(
                     "${PersianText.number(doneToday, digits)} انجام‌شدهٔ امروز",
                 art = SectionArtwork.HABITS,
                 startColor = HamghadamPalette.Olive,
-                endColor = HamghadamPalette.Teal,
+                endColor = HamghadamPalette.OliveDeep,
                 onClick = { },
                 action = null,
                 artSize = 96.dp,
