@@ -102,9 +102,11 @@ class EventCalendarTest {
             date = JalaliDate(1403, 12, 30),
             yearlyRepeat = true,
         )
-        assertNotNull(leap.occurrenceIn(1404))
-        // 1405 is not a leap year: 30 Esfand does not exist.
+        // 30 Esfand only exists in leap years: 1403 and 1408, not 1404/1405/1407.
+        assertNull(leap.occurrenceIn(1404))
         assertNull(leap.occurrenceIn(1405))
+        assertNull(leap.occurrenceIn(1407))
+        assertEquals(JalaliDate(1408, 12, 30), leap.occurrenceIn(1408))
 
         val normal = PersonalEvent(id = "n", title = "سالگرد", date = JalaliDate(1404, 5, 10), yearlyRepeat = true)
         assertEquals(JalaliDate(1407, 5, 10), normal.occurrenceIn(1407))

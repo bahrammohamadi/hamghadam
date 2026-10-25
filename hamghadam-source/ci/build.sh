@@ -137,6 +137,24 @@ GRADLE_ARGS=(--no-daemon --stacktrace --console=plain -Dorg.gradle.jvmargs=-Xmx3
 
 say "تست‌های JVM"
 if ! gradle "${GRADLE_ARGS[@]}" :app:testDebugUnitTest 2>&1 | tee -a "$LOG_FILE"; then
+    # نام تست‌های شکست‌خورده را به annotation تبدیل می‌کند تا بدون لاگ کامل هم دیده شوند.
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - <<'PYTEST' || true
+import glob
+import xml.etree.ElementTree as ET
+
+for path in sorted(glob.glob("app/build/test-results/testDebugUnitTest/*.xml")):
+    try:
+        root = ET.parse(path).getroot()
+    except Exception:
+        continue
+    for case in root.iter("testcase"):
+        for kind in ("failure", "error"):
+            for node in case.findall(kind):
+                message = (node.get("message") or node.text or "").replace("\n", " ")[:400]
+                print(f"::error::FAILED {case.get('classname')}.{case.get('name')} — {message}")
+PYTEST
+    fi
     die_with_log "تست‌های JVM شکست خوردند (مرحله: testDebugUnitTest)"
 fi
 
@@ -158,7 +176,10 @@ if command -v unzip >/dev/null 2>&1; then
     for f in AndroidManifest.xml classes.dex resources.arsc; do
         unzip -l "$APK" 2>/dev/null | grep -q " $f" || die "فایل $f داخل APK نیست"
     done
-    notice "APK ساختار سالم دارد (zip ok، manifest + dex + resources)"
+    for f in assets/events/1404.json assets/events/1405.json; do
+        unzip -l "$APK" 2>/dev/null | grep -q " $f" || die "دادهٔ مناسبت‌ها داخل APK نیست: $f"
+    done
+    notice "APK ساختار سالم دارد (zip ok، manifest + dex + resources + events)"
 fi
 
 # مشخصات بسته با aapt2/aapt
@@ -192,12 +213,17 @@ if [ -n "${GH_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
     say "انتشار APK در release غلتان"
     TAG="${RELEASE_TAG:-latest-debug}"
     SHA7=$(printf '%s' "${GITHUB_SHA:-unknown}" | cut -c1-7)
+    VERSION_NAME=$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)
+    VERSION_CODE=$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\).*/\1/p' app/build.gradle.kts | head -1)
+    VERSION_NAME="${VERSION_NAME:-?}"
+    VERSION_CODE="${VERSION_CODE:-?}"
     NOTES=$(cat <<TXT
 آخرین APK دیباگ ساخته‌شده از شاخهٔ \`${GITHUB_REF_NAME:-?}\` (commit ${SHA7}، اجرای #${GITHUB_RUN_NUMBER:-0}).
 
-- شناسهٔ بسته: \`ir.hamghadam.app\` — نسخهٔ 0.3.0 (versionCode 3)
+- شناسهٔ بسته: \`ir.hamghadam.app\` — نسخهٔ ${VERSION_NAME} (versionCode ${VERSION_CODE})
 - حداقل اندروید: 8.0 (API 26)
 - حجم: \`${APK_SIZE}\` بایت
+- دادهٔ مناسبت‌ها: ۱۴۰۴ و ۱۴۰۵ (به‌صورت آفلاین داخل APK)
 - امضا: debug (برای تست، بدون امضای انتشار)
 
 نصب: فایل \`app-debug.apk\` را دانلود کن، «نصب از منبع نامعتبر» را برای مرورگر فعال کن و نصب کن.
