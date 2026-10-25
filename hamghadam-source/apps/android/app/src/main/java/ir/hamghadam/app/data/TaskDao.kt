@@ -8,15 +8,43 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TaskDao {
-    @Query("SELECT * FROM tasks ORDER BY isCompleted ASC, createdAtEpochMillis DESC")
-    fun observeTasks(): Flow<List<TaskEntity>>
+
+    @Query(
+        """
+        SELECT * FROM tasks
+        WHERE deletedAtEpochMillis IS NULL
+        ORDER BY completedAtEpochMillis IS NOT NULL,
+                 dueEpochDay IS NULL, dueEpochDay,
+                 dueMinuteOfDay IS NULL, dueMinuteOfDay,
+                 priority DESC, createdAtEpochMillis DESC
+        """,
+    )
+    fun observeAll(): Flow<List<TaskEntity>>
+
+    @Query("SELECT * FROM tasks WHERE deletedAtEpochMillis IS NULL")
+    suspend fun loadAll(): List<TaskEntity>
+
+    @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1")
+    suspend fun findById(id: String): TaskEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(task: TaskEntity)
 
-    @Query("UPDATE tasks SET isCompleted = :completed, updatedAtEpochMillis = :updatedAt WHERE id = :id")
-    suspend fun setCompleted(id: String, completed: Boolean, updatedAt: Long)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(tasks: List<TaskEntity>)
 
-    @Query("DELETE FROM tasks WHERE id = :id")
-    suspend fun deleteById(id: String)
+    @Query("UPDATE tasks SET deletedAtEpochMillis = :now, updatedAtEpochMillis = :now WHERE id = :id")
+    suspend fun softDelete(id: String, now: Long)
+
+    @Query("UPDATE tasks SET deletedAtEpochMillis = NULL, updatedAtEpochMillis = :now WHERE id = :id")
+    suspend fun restore(id: String, now: Long)
+
+    @Query("UPDATE tasks SET projectId = NULL, updatedAtEpochMillis = :now WHERE projectId = :projectId")
+    suspend fun clearProject(projectId: String, now: Long)
+
+    @Query("SELECT * FROM tasks WHERE deletedAtEpochMillis IS NULL AND completedAtEpochMillis IS NULL AND dueEpochDay IS NOT NULL AND reminderMinutesBefore IS NOT NULL")
+    suspend fun loadWithReminders(): List<TaskEntity>
+
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAll()
 }
