@@ -417,6 +417,7 @@ fun AppRoot(
                                     onDelete = viewModel::deleteTask,
                                     onEdit = { activeDraft = it.toDraft() },
                                     onLongPress = { sheetTask = it },
+                                    onToggleStar = viewModel::toggleStar,
                                 )
 
                                 AppTab.CALENDAR -> CalendarScreen(
@@ -436,6 +437,7 @@ fun AppRoot(
                                         viewModel.toggleCalendarSource(source, enabled)
                                     },
                                     onLongPress = { sheetTask = it },
+                                    onToggleStar = viewModel::toggleStar,
                                 )
 
                                 AppTab.MORE -> MoreScreen(

@@ -14,6 +14,7 @@ interface TaskDao {
         SELECT * FROM tasks
         WHERE deletedAtEpochMillis IS NULL
         ORDER BY completedAtEpochMillis IS NOT NULL,
+                 starred DESC,
                  dueEpochDay IS NULL, dueEpochDay,
                  dueMinuteOfDay IS NULL, dueMinuteOfDay,
                  priority DESC, createdAtEpochMillis DESC

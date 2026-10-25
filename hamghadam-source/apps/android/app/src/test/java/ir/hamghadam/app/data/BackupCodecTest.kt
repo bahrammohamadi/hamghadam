@@ -19,6 +19,8 @@ class BackupCodecTest {
         reminderMinutesBefore = 15,
         createdAtEpochMillis = 1_700_000_000_000,
         updatedAtEpochMillis = 1_700_000_100_000,
+        subtasks = """[{"id":"a","title":"آماده کردن فایل","done":true}]""",
+        starred = true,
     )
 
     private val payload = BackupPayload(
@@ -44,6 +46,8 @@ class BackupCodecTest {
         assertEquals(task.repeatRule, copy.repeatRule)
         assertEquals(task.reminderMinutesBefore, copy.reminderMinutesBefore)
         assertEquals(task.createdAtEpochMillis, copy.createdAtEpochMillis)
+        assertEquals(task.subtasks, copy.subtasks)
+        assertEquals(task.starred, copy.starred)
         assertNull(copy.completedAtEpochMillis)
         assertEquals("کار", restored.projects.first().name)
         assertEquals("ورزش صبحگاهی", restored.habits.first().name)
@@ -87,5 +91,30 @@ class BackupCodecTest {
         assertTrue(restored.projects.isEmpty())
         assertTrue(restored.habits.isEmpty())
         assertTrue(restored.habitLogs.isEmpty())
+    }
+}
+
+class BackupCodecV2CompatibilityTest {
+
+    private val v2 = """
+        {
+          "format": "hamghadam-backup",
+          "version": 2,
+          "exportedAt": 1700000000000,
+          "tasks": [
+            {"id":"t1","title":"کار قدیمی","notes":"","priority":1,"tags":"","createdAt":1,"updatedAt":2}
+          ]
+        }
+    """.trimIndent()
+
+    @Test
+    fun `backup from 0-6 without checklist fields still imports`() {
+        val restored = BackupCodec.decode(v2)
+        assertEquals(1, restored.tasks.size)
+        val task = restored.tasks.first()
+        assertEquals("کار قدیمی", task.title)
+        assertEquals("", task.subtasks)
+        assertEquals(false, task.starred)
+        assertEquals(emptyList<ir.hamghadam.app.domain.Subtask>(), task.subtaskList)
     }
 }

@@ -66,6 +66,7 @@ fun TasksScreen(
     onDelete: (TaskEntity) -> Unit,
     onEdit: (TaskEntity) -> Unit,
     onLongPress: (TaskEntity) -> Unit = {},
+    onToggleStar: (TaskEntity) -> Unit = {},
 ) {
     val today = JalaliDate.today()
     val todayEpoch = today.toEpochDay()
@@ -87,7 +88,9 @@ fun TasksScreen(
             val inProject = projectId == null || task.projectId == projectId
             val hasTag = tag == null || task.tagList.contains(tag)
             val matchesSearch = query.isBlank() ||
-                TaskQuery.search(listOf(task), query) { "${it.title} ${it.notes} ${it.tags}" }.isNotEmpty()
+                TaskQuery.search(listOf(task), query) {
+                    "${it.title} ${it.notes} ${it.tags} " + it.subtaskList.joinToString(" ") { step -> step.title }
+                }.isNotEmpty()
             inProject && hasTag && matchesSearch
         }
         val byFilter = scoped.filter { task ->
@@ -244,6 +247,7 @@ fun TasksScreen(
                     onToggle = { onToggle(task) },
                     onDelete = { onDelete(task) },
                     onLongPress = { onLongPress(task) },
+                    onToggleStar = { onToggleStar(task) },
                 )
             }
         }

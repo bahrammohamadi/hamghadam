@@ -91,6 +91,7 @@ fun CalendarScreen(
     onDeleteEvent: (String) -> Unit,
     onToggleSource: (CalendarSource, Boolean) -> Unit,
     onLongPress: (TaskEntity) -> Unit = {},
+    onToggleStar: (TaskEntity) -> Unit = {},
 ) {
     val today = JalaliDate.today()
     val todayEpoch = today.toEpochDay()
@@ -238,6 +239,7 @@ fun CalendarScreen(
                     onToggle = { onToggle(task) },
                     onDelete = { onDelete(task) },
                     onLongPress = { onLongPress(task) },
+                    onToggleStar = { onToggleStar(task) },
                 )
             }
         }

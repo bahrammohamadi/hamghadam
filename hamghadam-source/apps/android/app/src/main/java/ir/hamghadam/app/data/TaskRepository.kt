@@ -148,6 +148,8 @@ class TaskRepository(
         repeat: RepeatRule = RepeatRule.NONE,
         reminderMinutesBefore: Int? = null,
         tags: String = "",
+        subtasks: List<ir.hamghadam.app.domain.Subtask> = emptyList(),
+        starred: Boolean = false,
     ): TaskEntity? {
         val cleanTitle = title.trim()
         if (cleanTitle.isEmpty()) return null
@@ -163,6 +165,8 @@ class TaskRepository(
             repeatRule = repeat.storageValue,
             reminderMinutesBefore = reminderMinutesBefore?.takeIf { dueDate != null },
             tags = Tags.toCsv(Tags.parseCsv(tags)),
+            subtasks = ir.hamghadam.app.domain.SubtaskCodec.encode(subtasks),
+            starred = starred,
             createdAtEpochMillis = timestamp,
             updatedAtEpochMillis = timestamp,
             profileId = activeProfileId,
@@ -175,6 +179,22 @@ class TaskRepository(
         val updated = task.copy(updatedAtEpochMillis = now())
         taskDao.upsert(updated)
         return updated
+    }
+
+    /** Star / un-star a task («ستاره‌دار») without touching anything else. */
+    suspend fun setStarred(task: TaskEntity, starred: Boolean): TaskEntity =
+        updateTask(task.copy(starred = starred))
+
+    /**
+     * Toggles one checklist line and returns the saved task (or null when the
+     * line no longer exists). Completion of a task is **not** inferred from the
+     * checklist: the PRD keeps the two independent.
+     */
+    suspend fun toggleSubtask(task: TaskEntity, subtaskId: String): TaskEntity? {
+        val items = task.subtaskList
+        if (items.none { it.id == subtaskId }) return null
+        val updated = items.map { if (it.id == subtaskId) it.copy(done = !it.done) else it }
+        return updateTask(task.copy(subtasks = ir.hamghadam.app.domain.SubtaskCodec.encode(updated)))
     }
 
     suspend fun deleteTask(id: String) = taskDao.softDelete(id, now())
@@ -465,6 +485,10 @@ class TaskRepository(
             updatedAtEpochMillis = timestamp,
             deletedAtEpochMillis = null,
             profileId = activeProfileId,
+            // Fresh checklist ids so the two tasks can be checked independently.
+            subtasks = ir.hamghadam.app.domain.SubtaskCodec.encode(
+                task.subtaskList.map { it.copy(id = java.util.UUID.randomUUID().toString(), done = false) },
+            ),
         )
         taskDao.upsert(copy)
         return copy

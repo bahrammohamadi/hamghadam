@@ -637,6 +637,7 @@ fun TaskRow(
     onDelete: () -> Unit,
     projectColor: Color = MaterialTheme.colorScheme.secondary,
     onLongPress: (() -> Unit)? = null,
+    onToggleStar: (() -> Unit)? = null,
 ) {
     val done = task.isCompleted
     val dueLabel = PersianCalendar.dueLabel(task.dueDate, task.dueMinuteOfDay, today, persianDigits)
@@ -699,7 +700,8 @@ fun TaskRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (meta.isNotBlank() || task.tagList.isNotEmpty()) {
+                val (doneSteps, totalSteps) = task.subtaskProgress
+                if (meta.isNotBlank() || task.tagList.isNotEmpty() || totalSteps > 0) {
                     Spacer(Modifier.height(3.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (projectName != null) {
@@ -711,7 +713,35 @@ fun TaskRow(
                             Spacer(Modifier.width(5.dp))
                             TagChip(PersianText.toPersianDigits("#$tag"))
                         }
+                        if (totalSteps > 0) {
+                            Spacer(Modifier.width(5.dp))
+                            TagChip(
+                                PersianText.number(doneSteps, persianDigits) + "/" +
+                                    PersianText.number(totalSteps, persianDigits),
+                            )
+                        }
                     }
+                }
+            }
+            if (onToggleStar != null) {
+                // 48dp target, small glyph: matches the other row actions.
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onToggleStar)
+                        .semantics {
+                            contentDescription = if (task.starred) "برداشتن ستاره از «${task.title}»"
+                            else "ستاره‌دار کردن «${task.title}»"
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = if (task.starred) "★" else "☆",
+                        fontSize = 16.sp,
+                        color = if (task.starred) HamghadamPalette.AmberDeep
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    )
                 }
             }
             if (task.priority == TaskEntity.PRIORITY_HIGH) {

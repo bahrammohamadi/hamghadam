@@ -71,8 +71,15 @@ data class TaskDraft(
     val repeat: RepeatRule = RepeatRule.NONE,
     val reminderMinutesBefore: Int? = null,
     val tags: String = "",
+    /** Checklist lines, edited in place by the editor. */
+    val subtasks: List<ir.hamghadam.app.domain.Subtask> = emptyList(),
+    val starred: Boolean = false,
 ) {
     val isNew: Boolean get() = id == null
+
+    /** For the editor header: «۲ از ۵» style counter. */
+    val subtaskProgress: ir.hamghadam.app.domain.SubtaskProgress
+        get() = ir.hamghadam.app.domain.SubtaskCodec.progress(subtasks)
 }
 
 fun TaskEntity.toDraft(): TaskDraft = TaskDraft(
@@ -86,6 +93,8 @@ fun TaskEntity.toDraft(): TaskDraft = TaskDraft(
     repeat = repeat,
     reminderMinutesBefore = reminderMinutesBefore,
     tags = tags,
+    subtasks = subtaskList,
+    starred = starred,
 )
 
 /** Editable copy of a personal calendar event. */
@@ -315,6 +324,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     repeat = draft.repeat,
                     reminderMinutesBefore = draft.reminderMinutesBefore.takeIf { draft.dueDate != null },
                     tags = draft.tags,
+                    subtasks = draft.subtasks,
+                    starred = draft.starred,
                 )
                 if (created != null) {
                     reminders.schedule(created)
@@ -332,6 +343,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                         repeatRule = draft.repeat.storageValue,
                         reminderMinutesBefore = draft.reminderMinutesBefore.takeIf { draft.dueDate != null },
                         tags = Tags.toCsv(Tags.parseCsv(draft.tags)),
+                        subtasks = ir.hamghadam.app.domain.SubtaskCodec.encode(draft.subtasks),
+                        starred = draft.starred,
                     ),
                 )
                 reminders.cancel(updated.id)
@@ -354,6 +367,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 reminders.schedule(task.copy(completedAtEpochMillis = null))
             }
+        }
+    }
+
+    /** Star / un-star from a list row; the list re-sorts by itself. */
+    fun toggleStar(task: TaskEntity) {
+        viewModelScope.launch(actionErrors) {
+            repository.setStarred(task, !task.starred)
+        }
+    }
+
+    /** Checks one checklist line from the task row (no editor needed). */
+    fun toggleSubtask(task: TaskEntity, subtaskId: String) {
+        viewModelScope.launch(actionErrors) {
+            repository.toggleSubtask(task, subtaskId)
         }
     }
 

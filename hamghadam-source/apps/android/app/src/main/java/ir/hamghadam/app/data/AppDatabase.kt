@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FocusSessionEntity::class,
         TemplateEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -85,6 +85,18 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         /**
+         * v4 -> v5: task checklists («زیروظیفه‌ها») and the star flag.
+         * Both are additive with a default, so existing rows stay valid and no
+         * data is rewritten (audit C-11 rule: additive-only migrations).
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tasks ADD COLUMN subtasks TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE tasks ADD COLUMN starred INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
          * Opens the database with SQLCipher when the native library is present.
          * If anything about encryption fails we still return a working (plain)
          * database instead of crashing the app on launch — but we never silently
@@ -108,7 +120,7 @@ abstract class AppDatabase : RoomDatabase() {
                 false
             }
             val builder = Room.databaseBuilder(app, AppDatabase::class.java, DatabaseCrypto.DB_NAME)
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 // Older pre-release schemas (v1) can still be thrown away safely.
                 .fallbackToDestructiveMigration()
 

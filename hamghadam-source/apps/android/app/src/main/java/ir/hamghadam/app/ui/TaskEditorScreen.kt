@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +22,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -38,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +54,7 @@ import ir.hamghadam.app.domain.PersianCalendar
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.ReminderOptions
 import ir.hamghadam.app.domain.RepeatRule
+import ir.hamghadam.app.domain.Subtask
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.ui.components.CircleIconButton
 import ir.hamghadam.app.ui.components.ClayCard
@@ -75,6 +80,7 @@ fun TaskEditorScreen(
     var showTimePicker by remember { mutableStateOf(false) }
     var showReminderMenu by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var newSubtask by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -97,6 +103,19 @@ fun TaskEditorScreen(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
+            IconButton(
+                onClick = { draft = draft.copy(starred = !draft.starred) },
+                modifier = Modifier.semantics {
+                    contentDescription = if (draft.starred) "برداشتن ستاره" else "ستاره‌دار کردن کار"
+                },
+            ) {
+                Text(
+                    text = if (draft.starred) "★" else "☆",
+                    fontSize = 20.sp,
+                    color = if (draft.starred) ir.hamghadam.app.ui.theme.HamghadamPalette.Amber
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Button(
                 onClick = { onSave(draft) },
                 enabled = draft.title.isNotBlank(),
@@ -135,6 +154,77 @@ fun TaskEditorScreen(
                 maxLines = 5,
                 shape = RoundedCornerShape(16.dp),
             )
+
+            EditorSection(title = "چک‌لیست") {
+                if (draft.subtasks.isEmpty()) {
+                    Text(
+                        text = "این کار را به قدم‌های کوچک بشکن؛ هر قدم یک تیک مستقل دارد.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    for (item in draft.subtasks) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = item.done,
+                                onCheckedChange = { checked ->
+                                    draft = draft.copy(
+                                        subtasks = draft.subtasks.map {
+                                            if (it.id == item.id) it.copy(done = checked) else it
+                                        },
+                                    )
+                                },
+                            )
+                            Text(
+                                text = item.title,
+                                modifier = Modifier.weight(1f),
+                                fontSize = 13.sp,
+                                color = if (item.done) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.onSurface,
+                            )
+                            IconButton(
+                                onClick = {
+                                    draft = draft.copy(subtasks = draft.subtasks.filterNot { it.id == item.id })
+                                },
+                            ) {
+                                Text("×", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "${PersianText.number(draft.subtaskProgress.first, digits)} از " +
+                            "${PersianText.number(draft.subtaskProgress.second, digits)} انجام شده",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newSubtask,
+                        onValueChange = { newSubtask = it.take(Subtask.MAX_TITLE) },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("قدم تازه…", fontSize = 12.sp) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    TextButton(
+                        onClick = {
+                            val created = Subtask.create(newSubtask)
+                            if (created != null && draft.subtasks.size < Subtask.MAX_ITEMS) {
+                                draft = draft.copy(subtasks = draft.subtasks + created)
+                                newSubtask = ""
+                            }
+                        },
+                        enabled = newSubtask.isNotBlank() && draft.subtasks.size < Subtask.MAX_ITEMS,
+                    ) { Text("افزودن", fontSize = 12.sp) }
+                }
+            }
 
             EditorSection(title = "زمان‌بندی") {
                 Row(

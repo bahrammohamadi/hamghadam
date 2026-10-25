@@ -67,6 +67,8 @@ object BackupCodec {
                     "createdAt" to task.createdAtEpochMillis,
                     "updatedAt" to task.updatedAtEpochMillis,
                     "sortOrder" to task.sortOrder,
+                    "subtasks" to task.subtasks,
+                    "starred" to task.starred,
                 )
             },
             "habits" to payload.habits.map { habit ->
@@ -162,6 +164,9 @@ object BackupCodec {
                 createdAtEpochMillis = entry.long("createdAt") ?: 0L,
                 updatedAtEpochMillis = entry.long("updatedAt") ?: 0L,
                 sortOrder = entry.long("sortOrder") ?: 0L,
+                // Backups from 0.6 and older simply have no such keys.
+                subtasks = entry.string("subtasks").orEmpty(),
+                starred = entry["starred"] as? Boolean ?: false,
             )
         }.filter { it.title.isNotBlank() }
 

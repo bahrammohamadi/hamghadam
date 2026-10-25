@@ -42,6 +42,10 @@ data class TaskEntity(
     val deletedAtEpochMillis: Long? = null,
     /** Owning local account; "" is the implicit first account. */
     val profileId: String = "",
+    /** JSON checklist, see [ir.hamghadam.app.domain.SubtaskCodec]. */
+    val subtasks: String = "",
+    /** Starred/pinned by the user; shown first in lists. */
+    val starred: Boolean = false,
 ) {
     val isCompleted: Boolean get() = completedAtEpochMillis != null
 
@@ -56,6 +60,13 @@ data class TaskEntity(
         get() = dueMinuteOfDay?.takeIf { it in 0 until DAY_MINUTES }?.let { LocalTime.of(it / 60, it % 60) }
 
     val tagList: List<String> get() = ir.hamghadam.app.domain.Tags.parseCsv(tags)
+
+    val subtaskList: List<ir.hamghadam.app.domain.Subtask>
+        get() = ir.hamghadam.app.domain.SubtaskCodec.decode(subtasks)
+
+    /** `done to total`; `0 to 0` when the task has no checklist. */
+    val subtaskProgress: ir.hamghadam.app.domain.SubtaskProgress
+        get() = ir.hamghadam.app.domain.SubtaskCodec.progress(subtaskList)
 
     val completedDate: JalaliDate?
         get() = completedAtEpochMillis?.let { millis ->
