@@ -9,7 +9,11 @@ data class ChallengeStep(
 ) {
     val ratio: Float get() = if (target <= 0) 1f else (done.toFloat() / target.toFloat()).coerceIn(0f, 1f)
     val isComplete: Boolean get() = done >= target && target > 0
-    val label: String get() = "${PersianText.number(done)} از ${PersianText.number(target)} $unit"
+    val label: String
+        get() {
+            val shown = if (target <= 0) 0 else done.coerceIn(0, target)
+            return "${PersianText.number(shown)} از ${PersianText.number(target)} $unit"
+        }
 }
 
 /**
