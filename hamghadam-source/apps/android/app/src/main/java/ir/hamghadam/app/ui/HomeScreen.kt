@@ -135,7 +135,7 @@ fun HomeScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 108.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 132.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
@@ -158,6 +158,14 @@ fun HomeScreen(
         }
 
         item {
+            QuickAddCard(
+                today = today,
+                digits = digits,
+                onQuickAdd = onQuickAdd,
+            )
+        }
+
+        item {
             QuickActionRow(
                 onOpenTasks = onOpenTasks,
                 onOpenFocus = onOpenFocus,
@@ -175,14 +183,6 @@ fun HomeScreen(
                 digits = digits,
                 running = focusTimer.running,
                 onStart = onOpenFocus,
-            )
-        }
-
-        item {
-            QuickAddCard(
-                today = today,
-                digits = digits,
-                onQuickAdd = onQuickAdd,
             )
         }
 

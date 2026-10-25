@@ -291,7 +291,7 @@ fun AppRoot(viewModel: AppViewModel) {
                             hostState = snackbarHostState,
                             modifier = Modifier
                                 .navigationBarsPadding()
-                                .padding(bottom = 108.dp, start = 16.dp, end = 16.dp),
+                                .padding(bottom = 132.dp, start = 16.dp, end = 16.dp),
                         )
                     },
                 ) { padding ->

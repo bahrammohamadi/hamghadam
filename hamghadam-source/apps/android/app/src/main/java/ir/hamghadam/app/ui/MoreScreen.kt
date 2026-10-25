@@ -59,7 +59,7 @@ fun MoreScreen(
     val digits = settings.persianDigits
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 108.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 132.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
