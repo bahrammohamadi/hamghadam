@@ -92,7 +92,7 @@ fun MoreScreen(
                         Column(Modifier.weight(1f)) {
                             Text("هم‌قدم", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "کاملاً آفلاین • نسخهٔ ${PersianText.number(3, digits)}.${PersianText.number(0, digits)}",
+                                text = "کاملاً آفلاین • نسخهٔ ۰.۳.۰",
                                 color = Color.White.copy(alpha = 0.82f),
                                 fontSize = 11.sp,
                             )
