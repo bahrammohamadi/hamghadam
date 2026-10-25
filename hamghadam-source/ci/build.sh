@@ -175,7 +175,9 @@ if [ -n "$AAPT" ]; then
         "$BADGING_FILE" | head -12 || true
     PKG=$(sed -n "s/^package: name='\\([^']*\\)'.*/\1/p" "$BADGING_FILE" | head -1)
     VC=$(sed -n "s/.*versionCode='\\([^']*\\)'.*/\1/p" "$BADGING_FILE" | head -1)
-    MINSDK=$(sed -n "s/^\\(min\\)\\{0,1\\}sdkVersion:'\\([^']*\\)'.*/\2/p" "$BADGING_FILE" | head -1)
+    MINSDK=$(sed -n "s/^\\(min\\)\\{0,1\\}sdkVersion:'\\([^']*\\)'.*/\\2/p" "$BADGING_FILE" | head -1)
+    [ -n "$MINSDK" ] || MINSDK=$(awk -F"'" '/sdkVersion/ {print $2; exit}' "$BADGING_FILE" 2>/dev/null || true)
+    [ -n "$MINSDK" ] || MINSDK=$(grep -m1 -oE "sdkVersion[^0-9]*[0-9]+" "$BADGING_FILE" 2>/dev/null | grep -oE "[0-9]+$" || true)
     LAUNCH=$(grep -c "^launchable-activity" "$BADGING_FILE" || true)
     notice "APK: package=${PKG:-?} versionCode=${VC:-?} minSdk=${MINSDK:-?} launcher=${LAUNCH:-0} size=${APK_SIZE}B"
     [ "${PKG:-}" = "ir.hamghadam.app" ] || die "شناسهٔ بستهٔ APK غیرمنتظره است: ${PKG:-خالی}"
