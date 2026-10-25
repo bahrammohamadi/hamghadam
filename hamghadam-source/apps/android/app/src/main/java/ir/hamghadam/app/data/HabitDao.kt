@@ -47,4 +47,10 @@ interface HabitDao {
 
     @Query("DELETE FROM habit_logs")
     suspend fun deleteAllLogs()
+
+    @Query("DELETE FROM habits WHERE profileId = :profileId")
+    suspend fun deleteHabitsByProfile(profileId: String)
+
+    @Query("DELETE FROM habit_logs WHERE habitId NOT IN (SELECT id FROM habits)")
+    suspend fun deleteOrphanLogs()
 }

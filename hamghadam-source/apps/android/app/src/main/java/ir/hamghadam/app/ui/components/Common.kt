@@ -3,7 +3,9 @@ package ir.hamghadam.app.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +56,9 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.ui.theme.CardRadius
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 
+/** Card inner padding; the profile screen can switch to a compact value. */
+val LocalCardPadding = androidx.compose.runtime.compositionLocalOf { 16.dp }
+
 /** Very soft ambient shadow used by every white card, like the reference screens. */
 fun Modifier.softShadow(radius: Dp = 24.dp, elevation: Dp = 10.dp): Modifier =
     shadow(
@@ -81,7 +86,7 @@ fun SoftCard(
     val click = onClick
     Column(
         modifier = if (click != null) base.clickable { click() } else base,
-        content = { Column(Modifier.fillMaxWidth().padding(16.dp), content = content) },
+        content = { Column(Modifier.fillMaxWidth().padding(LocalCardPadding.current), content = content) },
     )
 }
 
@@ -482,6 +487,7 @@ fun MiniBars(
 }
 
 /** A row inside a "Today" timeline: icon, small kind label, bold title, time. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TimelineRow(
     emoji: String,
@@ -494,12 +500,13 @@ fun TimelineRow(
     meta: String? = null,
     checked: Boolean = false,
     onToggle: (() -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -575,6 +582,7 @@ fun StatTile(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TaskRow(
     task: TaskEntity,
@@ -585,6 +593,7 @@ fun TaskRow(
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     projectColor: Color = MaterialTheme.colorScheme.secondary,
+    onLongPress: (() -> Unit)? = null,
 ) {
     val done = task.isCompleted
     val dueLabel = PersianCalendar.dueLabel(task.dueDate, task.dueMinuteOfDay, today, persianDigits)
@@ -597,7 +606,7 @@ fun TaskRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() }
+                .combinedClickable(onClick = onClick, onLongClick = onLongPress)
                 .padding(start = 12.dp, end = 6.dp, top = 11.dp, bottom = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

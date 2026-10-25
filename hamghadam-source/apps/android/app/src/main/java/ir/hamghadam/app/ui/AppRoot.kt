@@ -1,5 +1,7 @@
 package ir.hamghadam.app.ui
 
+import android.content.Intent
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +31,8 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -48,22 +52,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ir.hamghadam.app.AppViewModel
 import ir.hamghadam.app.EventDraft
+import ir.hamghadam.app.LockUiState
 import ir.hamghadam.app.TaskDraft
 import ir.hamghadam.app.UiEvent
 import ir.hamghadam.app.data.ThemeMode
 import ir.hamghadam.app.domain.EventProjection
 import ir.hamghadam.app.domain.JalaliDate
+import ir.hamghadam.app.data.TaskEntity
+import ir.hamghadam.app.domain.JalaliDate
+import ir.hamghadam.app.domain.PersianCalendar
+import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.toDraft
+import ir.hamghadam.app.ui.components.LocalCardPadding
 import ir.hamghadam.app.ui.components.softShadow
+import ir.hamghadam.app.ui.theme.HamghadamPalette
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 import ir.hamghadam.app.ui.theme.HamghadamTheme
 
@@ -91,6 +105,7 @@ private object MoreRoute {
     const val GOOGLE = "google"
     const val SETTINGS = "settings"
     const val FOCUS = "focus"
+    const val PROFILE = "profile"
 }
 
 @Composable
@@ -106,6 +121,9 @@ fun AppRoot(viewModel: AppViewModel) {
     val templates by viewModel.templates.collectAsStateWithLifecycle()
     val focusTimer by viewModel.focusTimer.collectAsStateWithLifecycle()
     val googleState by viewModel.google.collectAsStateWithLifecycle()
+    val lockState by viewModel.lock.collectAsStateWithLifecycle()
+    val profiles by viewModel.profiles.collectAsStateWithLifecycle()
+    val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
 
     val darkTheme = when (settings.themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -113,11 +131,37 @@ fun AppRoot(viewModel: AppViewModel) {
         ThemeMode.DARK -> true
     }
 
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        HamghadamTheme(darkTheme = darkTheme) {
+    val view = LocalView.current
+    LaunchedEffect(settings.compact, settings.accent, settings.themeMode, lockState.locked) {
+        val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
+        if (viewModel.secureScreen) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalLayoutDirection provides LayoutDirection.Rtl,
+        LocalCardPadding provides if (settings.compact) 12.dp else 16.dp,
+    ) {
+        HamghadamTheme(darkTheme = darkTheme, accent = settings.accent) {
+            if (lockState.locked) {
+                val activeProfile = profiles.firstOrNull { it.id == activeProfileId } ?: profiles.first()
+                LockScreen(
+                    state = lockState,
+                    profile = activeProfile,
+                    onUnlock = viewModel::unlock,
+                    // No recovery path exists by design; the screen explains that the
+                    // only way back is clearing app data.
+                    onLockedOut = {},
+                )
+                return@HamghadamTheme
+            }
             var tabName by rememberSaveable { mutableStateOf(AppTab.HOME.name) }
             var moreRoute by rememberSaveable { mutableStateOf<String?>(null) }
             var activeDraft by remember { mutableStateOf<TaskDraft?>(null) }
+            var sheetTask by remember { mutableStateOf<TaskEntity?>(null) }
             val snackbarHostState = remember { SnackbarHostState() }
             val currentTab = AppTab.entries.firstOrNull { it.name == tabName } ?: AppTab.HOME
             val today = JalaliDate.today()
@@ -263,6 +307,16 @@ fun AppRoot(viewModel: AppViewModel) {
                             onBack = { moreRoute = null },
                         )
 
+                        MoreRoute.PROFILE -> ProfileScreen(
+                            profiles = profiles,
+                            activeId = activeProfileId,
+                            settings = settings,
+                            lockState = lockState,
+                            lockAfterMinutes = viewModel.lockTimeoutMinutes,
+                            secureScreen = viewModel.secureScreen,
+                            actions = profileActions(viewModel, settings, { moreRoute = null }, { moreRoute = MoreRoute.SETTINGS }),
+                        )
+
                         else -> SettingsScreen(
                             settings = settings,
                             projects = projects,
@@ -277,6 +331,9 @@ fun AppRoot(viewModel: AppViewModel) {
                             onExport = viewModel::exportBackup,
                             onImport = viewModel::importBackup,
                             onReschedule = viewModel::rescheduleReminders,
+                            onAccentChange = viewModel::setAccent,
+                            onCompactChange = viewModel::setCompact,
+                            onOpenProfile = { moreRoute = MoreRoute.PROFILE },
                             onBack = { moreRoute = null },
                         )
                     }
@@ -323,6 +380,8 @@ fun AppRoot(viewModel: AppViewModel) {
                                     onOpenStats = { moreRoute = MoreRoute.STATS },
                                     onOpenTasks = { tabName = AppTab.TASKS.name },
                                     onAddForDay = { day -> activeDraft = TaskDraft(dueDate = day) },
+                                    onOpenProfile = { moreRoute = MoreRoute.PROFILE },
+                                    onLongPress = { sheetTask = it },
                                 )
 
                                 AppTab.TASKS -> TasksScreen(
@@ -332,6 +391,7 @@ fun AppRoot(viewModel: AppViewModel) {
                                     onToggle = viewModel::toggleTask,
                                     onDelete = viewModel::deleteTask,
                                     onEdit = { activeDraft = it.toDraft() },
+                                    onLongPress = { sheetTask = it },
                                 )
 
                                 AppTab.CALENDAR -> CalendarScreen(
@@ -350,13 +410,17 @@ fun AppRoot(viewModel: AppViewModel) {
                                     onToggleSource = { source, enabled ->
                                         viewModel.toggleCalendarSource(source, enabled)
                                     },
+                                    onLongPress = { sheetTask = it },
                                 )
 
                                 AppTab.MORE -> MoreScreen(
                                     settings = settings,
+                                    profile = profiles.firstOrNull { it.id == activeProfileId } ?: profiles.first(),
+                                    profileCount = profiles.size,
                                     openTasks = tasks.count { !it.isCompleted },
                                     eventCount = personalEvents.size + googleEvents.size,
                                     focusSessions = focusSessions.count { it.completed },
+                                    onOpenProfile = { moreRoute = MoreRoute.PROFILE },
                                     onOpenFocus = { moreRoute = MoreRoute.FOCUS },
                                     onOpenHabits = { moreRoute = MoreRoute.HABITS },
                                     onOpenStats = { moreRoute = MoreRoute.STATS },
@@ -374,6 +438,40 @@ fun AppRoot(viewModel: AppViewModel) {
                             onAdd = { activeDraft = TaskDraft(dueDate = today) },
                             modifier = Modifier.align(Alignment.BottomCenter),
                         )
+
+                        sheetTask?.let { task ->
+                            TaskActionSheet(
+                                task = task,
+                                today = today,
+                                projects = projects,
+                                persianDigits = settings.persianDigits,
+                                onDismiss = { sheetTask = null },
+                                onEdit = {
+                                    activeDraft = it.toDraft()
+                                    sheetTask = null
+                                },
+                                onToggle = {
+                                    viewModel.toggleTask(task)
+                                    sheetTask = null
+                                },
+                                onDuplicate = {
+                                    viewModel.duplicateTask(task)
+                                    sheetTask = null
+                                },
+                                onPriority = { priority ->
+                                    viewModel.setTaskPriority(task, priority)
+                                    sheetTask = null
+                                },
+                                onMove = { projectId ->
+                                    viewModel.moveTask(task, projectId)
+                                    sheetTask = null
+                                },
+                                onDelete = {
+                                    viewModel.deleteTask(task)
+                                    sheetTask = null
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -472,5 +570,155 @@ private fun NavItem(
             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
             color = if (active) HamghadamPalette.Violet else MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/** Collects the account-panel callbacks in one place. */
+private fun profileActions(
+    viewModel: AppViewModel,
+    settings: ir.hamghadam.app.data.AppSettings,
+    onBack: () -> Unit,
+    onOpenSettings: () -> Unit,
+): ProfileActions = ProfileActions(
+    onSwitch = viewModel::switchProfile,
+    onCreate = { name, emoji, color -> viewModel.createProfile(name, emoji, color) },
+    onUpdate = { profile, name, emoji, color -> viewModel.updateProfile(profile, name, emoji, color) },
+    onDelete = viewModel::deleteProfile,
+    onEnableLock = viewModel::enableLock,
+    onDisableLock = viewModel::disableLock,
+    onLockAfter = viewModel::setLockAfterMinutes,
+    onSecureScreen = viewModel::setSecureScreen,
+    onAccent = viewModel::setAccent,
+    onCompact = viewModel::setCompact,
+    onExport = viewModel::exportBackup,
+    onImport = viewModel::importBackup,
+    onOpenSettings = onOpenSettings,
+    onBack = onBack,
+)
+
+/**
+ * Long-press task menu: edit, complete, duplicate, priority, move to a list,
+ * share as plain text, delete. Rows are 48dp high with 20dp icons.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TaskActionSheet(
+    task: TaskEntity,
+    today: JalaliDate,
+    projects: List<ir.hamghadam.app.data.ProjectEntity>,
+    persianDigits: Boolean,
+    onDismiss: () -> Unit,
+    onEdit: (TaskEntity) -> Unit,
+    onToggle: () -> Unit,
+    onDuplicate: () -> Unit,
+    onPriority: (Int) -> Unit,
+    onMove: (String?) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val context = LocalContext.current
+    val due = PersianCalendar.dueLabel(task.dueDate, task.dueMinuteOfDay, today, persianDigits)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 26.dp)) {
+            Text(
+                text = task.title,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+            )
+            if (due != null) {
+                Spacer(Modifier.height(3.dp))
+                Text(due, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(10.dp))
+            SheetRow("✎", "ویرایش", "تاریخ، ساعت، لیست و یادداشت") { onEdit(task) }
+            SheetRow("✓", if (task.isCompleted) "برگرداندن به کارها" else "انجام شد", null, onToggle)
+            SheetRow("⧉", "ساخت نسخهٔ تازه", "یک کپی با همان مشخصات", onDuplicate)
+            SheetRow("🚩", "مهم کن", "انتقال به بالای فهرست", { onPriority(TaskEntity.PRIORITY_HIGH) })
+            SheetRow("⬇️", "اهمیت کم", null, { onPriority(TaskEntity.PRIORITY_LOW) })
+            SheetRow(
+                emoji = "↗️",
+                title = "اشتراک‌گذاری",
+                subtitle = "ارسال متن کار در پیام‌رسان‌ها",
+                onClick = {
+                    val text = buildString {
+                        append(task.title)
+                        if (due != null) append(" — ").append(due)
+                    }
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, text)
+                    }
+                    runCatching { context.startActivity(Intent.createChooser(intent, "اشتراک‌گذاری کار")) }
+                    onDismiss()
+                },
+            )
+            if (projects.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text("انتقال به لیست", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ir.hamghadam.app.ui.components.PillChip(
+                        text = "بدون لیست",
+                        selected = task.projectId == null,
+                        onClick = { onMove(null) },
+                    )
+                    for (project in projects.take(3)) {
+                        ir.hamghadam.app.ui.components.PillChip(
+                            text = project.name,
+                            selected = task.projectId == project.id,
+                            onClick = { onMove(project.id) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            Spacer(Modifier.height(10.dp))
+            SheetRow("🗑", "حذف", "با امکان واگرد", onDelete, danger = true)
+        }
+    }
+}
+
+@Composable
+private fun SheetRow(
+    emoji: String,
+    title: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    danger: Boolean = false,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(38.dp)
+                .background(
+                    if (danger) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(13.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) { Text(emoji, fontSize = 16.sp) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (danger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+            )
+            if (subtitle != null) {
+                Text(subtitle, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }

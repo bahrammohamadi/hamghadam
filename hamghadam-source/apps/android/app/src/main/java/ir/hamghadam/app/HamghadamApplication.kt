@@ -7,6 +7,8 @@ import android.content.Context
 import android.os.Build
 import ir.hamghadam.app.data.AppDatabase
 import ir.hamghadam.app.data.EventCatalog
+import ir.hamghadam.app.data.ProfileStore
+import ir.hamghadam.app.data.SecurityStore
 import ir.hamghadam.app.data.SettingsStore
 import ir.hamghadam.app.data.TaskRepository
 import ir.hamghadam.app.google.GoogleSyncScheduler
@@ -17,6 +19,8 @@ import ir.hamghadam.app.notify.ReminderScheduler
 /** Manual dependency container: small app, no DI framework needed yet. */
 class AppContainer(application: Application) {
     val database: AppDatabase = AppDatabase.get(application)
+    val profiles = ProfileStore(application)
+    val security = SecurityStore(application)
     val repository = TaskRepository(
         taskDao = database.taskDao(),
         projectDao = database.projectDao(),
@@ -25,6 +29,7 @@ class AppContainer(application: Application) {
         externalEventDao = database.externalEventDao(),
         focusDao = database.focusSessionDao(),
         templateDao = database.templateDao(),
+        profiles = profiles,
     )
     val settings = SettingsStore(application)
     val reminders = ReminderScheduler(application)

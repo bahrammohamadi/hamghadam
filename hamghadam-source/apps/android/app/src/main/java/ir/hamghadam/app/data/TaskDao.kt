@@ -47,4 +47,7 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM tasks WHERE profileId = :profileId")
+    suspend fun deleteByProfile(profileId: String)
 }

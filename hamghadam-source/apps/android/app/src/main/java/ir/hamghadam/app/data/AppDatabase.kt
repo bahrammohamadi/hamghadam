@@ -18,7 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FocusSessionEntity::class,
         TemplateEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -71,13 +71,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v3 -> v4: multi-account support. Every user-owned table gets a
+         * `profileId`; existing rows keep the empty id, which is the implicit
+         * first account, so nobody loses data when updating.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (table in listOf("tasks", "projects", "habits", "personal_events", "focus_sessions", "task_templates")) {
+                    db.execSQL("ALTER TABLE `$table` ADD COLUMN `profileId` TEXT NOT NULL DEFAULT ''")
+                }
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "hamghadam.db",
             )
-                .addMigrations(MIGRATION_2_3)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                 // Older pre-release schemas (v1) can still be thrown away safely.
                 .fallbackToDestructiveMigration()
                 .build()

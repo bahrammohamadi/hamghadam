@@ -10,8 +10,11 @@ import ir.hamghadam.app.data.ExternalEventEntity
 import ir.hamghadam.app.data.FocusSessionEntity
 import ir.hamghadam.app.data.HabitEntity
 import ir.hamghadam.app.data.HabitLogEntity
+import ir.hamghadam.app.data.LocalProfile
 import ir.hamghadam.app.data.PersonalEventEntity
 import ir.hamghadam.app.data.ProjectEntity
+import ir.hamghadam.app.data.DEFAULT_PROFILE_ID
+import ir.hamghadam.app.data.isPinValid
 import ir.hamghadam.app.data.TaskEntity
 import ir.hamghadam.app.data.TemplateEntity
 import ir.hamghadam.app.data.ThemeMode
@@ -26,6 +29,7 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.QuickAddParser
 import ir.hamghadam.app.domain.RepeatRule
 import ir.hamghadam.app.domain.Tags
+import ir.hamghadam.app.ui.theme.AccentColor
 import ir.hamghadam.app.google.GoogleCalendarApi
 import ir.hamghadam.app.google.GoogleOAuth
 import ir.hamghadam.app.google.GoogleSyncScheduler
@@ -112,6 +116,16 @@ data class GoogleUiState(
     val error: String = "",
 )
 
+/** Lock screen state: whether a PIN exists, whether the app is locked right now. */
+data class LockUiState(
+    val enabled: Boolean = false,
+    val locked: Boolean = false,
+    val blockedSeconds: Long = 0L,
+    val failures: Int = 0,
+    val error: String? = null,
+    val justUnlocked: Boolean = false,
+)
+
 sealed interface UiEvent {
     data class Message(val text: String) : UiEvent
     data class TaskDeleted(val id: String, val title: String) : UiEvent
@@ -125,7 +139,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val settingsStore = container.settings
     private val tokens: GoogleTokenStore = container.googleTokens
 
+    private val profilesStore = container.profiles
+    private val security = container.security
+
     val eventCatalog: EventCatalog = container.events
+
+    val profiles: StateFlow<List<LocalProfile>> = profilesStore.profiles
+
+    val activeProfileId: StateFlow<String> = profilesStore.activeId
 
     val tasks: StateFlow<List<TaskEntity>> = repository.observeTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -167,6 +188,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events: Flow<UiEvent> = _events.receiveAsFlow()
+
+    private val _lock = MutableStateFlow(
+        LockUiState(
+            enabled = security.isPinSet,
+            locked = security.isPinSet,
+            blockedSeconds = security.blockedForSeconds(),
+        ),
+    )
+    val lock: StateFlow<LockUiState> = _lock.asStateFlow()
+
+    val secureScreen: Boolean get() = security.secureScreen
+
+    val lockTimeoutMinutes: Int get() = security.lockAfterMinutes
+
+    private var pausedAtMillis = 0L
 
     private var focusJob: Job? = null
     private var focusEndsAtMillis: Long = 0L
@@ -788,6 +824,152 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 onFailure = { error -> "بازیابی ناموفق بود: ${error.message ?: "فایل معتبر نیست"}" },
             )
             _events.send(UiEvent.Message(message))
+        }
+    }
+
+    // ------------------------------------------------------------- accounts
+
+    fun createProfile(name: String, emoji: String, colorArgb: Int) {
+        val profile = profilesStore.create(name, emoji, colorArgb)
+        switchProfile(profile.id)
+        viewModelScope.launch { _events.send(UiEvent.Message("حساب «${profile.name}» ساخته شد")) }
+    }
+
+    fun updateProfile(profile: LocalProfile, name: String, emoji: String, colorArgb: Int) {
+        profilesStore.update(profile.id, name, emoji, colorArgb)
+        viewModelScope.launch { _events.send(UiEvent.Message("حساب به‌روز شد")) }
+    }
+
+    fun switchProfile(id: String) {
+        if (id == profilesStore.activeId.value) return
+        stopFocus()
+        profilesStore.setActive(id)
+        refreshFocusToday()
+        val name = profilesStore.active.name
+        viewModelScope.launch { _events.send(UiEvent.Message("حساب فعال: $name")) }
+    }
+
+    fun deleteProfile(profile: LocalProfile) {
+        if (profile.id == DEFAULT_PROFILE_ID) return
+        viewModelScope.launch {
+            runCatching { repository.deleteProfileData(profile.id) }
+            profilesStore.remove(profile.id)
+            refreshFocusToday()
+            _events.send(UiEvent.Message("حساب و داده‌هایش حذف شد"))
+        }
+    }
+
+    suspend fun profileHasData(profile: LocalProfile): Boolean =
+        runCatching { !repository.profileIsEmpty(profile.id) }.getOrDefault(false)
+
+    // ------------------------------------------------------------- security
+
+    fun enableLock(pin: String): Boolean {
+        if (!isPinValid(pin)) {
+            _lock.update { it.copy(error = "PIN باید ۴ تا ۸ رقم باشد") }
+            return false
+        }
+        security.setPin(pin)
+        security.resetFailures()
+        _lock.value = LockUiState(enabled = true, locked = false)
+        viewModelScope.launch { _events.send(UiEvent.Message("قفل ورود فعال شد")) }
+        return true
+    }
+
+    fun changeLockPin(pin: String): Boolean = enableLock(pin)
+
+    fun disableLock(pin: String): Boolean {
+        if (!security.verify(pin)) {
+            _lock.update { it.copy(error = "PIN درست نیست") }
+            return false
+        }
+        security.clearPin()
+        _lock.value = LockUiState(enabled = false, locked = false)
+        viewModelScope.launch { _events.send(UiEvent.Message("قفل ورود خاموش شد")) }
+        return true
+    }
+
+    fun unlock(pin: String) {
+        val blocked = security.blockedForSeconds()
+        if (blocked > 0) {
+            _lock.update { it.copy(blockedSeconds = blocked, error = "کمی صبر کن") }
+            return
+        }
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.Default) { security.verify(pin) }
+            if (ok) {
+                security.resetFailures()
+                _lock.value = LockUiState(enabled = true, locked = false, justUnlocked = true)
+            } else {
+                val failures = withContext(Dispatchers.Default) { security.registerFailure() }
+                val wait = security.blockedForSeconds()
+                _lock.update {
+                    it.copy(
+                        locked = true,
+                        failures = failures,
+                        blockedSeconds = wait,
+                        error = if (failures >= 3) "چند بار اشتباه؛ ${wait} ثانیه صبر کن" else "PIN درست نیست",
+                    )
+                }
+            }
+        }
+    }
+
+    fun lockNow() {
+        if (!security.isPinSet) return
+        _lock.value = LockUiState(enabled = true, locked = true)
+    }
+
+    fun setLockAfterMinutes(minutes: Int) = security.setLockAfterMinutes(minutes)
+
+    fun setSecureScreen(enabled: Boolean) = security.setSecureScreen(enabled)
+
+    /** Called from `MainActivity.onStop`; records when the UI left the foreground. */
+    fun onAppPaused() {
+        pausedAtMillis = System.currentTimeMillis()
+    }
+
+    /** Called from `MainActivity.onStart`; locks again after the chosen timeout. */
+    fun onAppResumed() {
+        if (!security.isPinSet) return
+        if (pausedAtMillis == 0L) return
+        val timeout = security.lockAfterMinutes
+        val elapsedMinutes = (System.currentTimeMillis() - pausedAtMillis) / 60_000
+        if (timeout == 0 || elapsedMinutes >= timeout) {
+            _lock.value = LockUiState(enabled = true, locked = true)
+        }
+        pausedAtMillis = 0L
+    }
+
+    // ----------------------------------------------------------- appearance
+
+    fun setAccent(accent: AccentColor) = settingsStore.setAccent(accent)
+
+    fun setCompact(enabled: Boolean) = settingsStore.setCompact(enabled)
+
+    // ---------------------------------------------------------- task extras
+
+    fun duplicateTask(task: TaskEntity) {
+        viewModelScope.launch {
+            val copy = repository.duplicateTask(task)
+            if (copy != null) {
+                reminders.schedule(copy)
+                _events.send(UiEvent.Message("یک نسخهٔ تازه ساخته شد"))
+            }
+        }
+    }
+
+    fun moveTask(task: TaskEntity, projectId: String?) {
+        viewModelScope.launch {
+            repository.updateTask(task.copy(projectId = projectId))
+            _events.send(UiEvent.Message(if (projectId == null) "از لیست خارج شد" else "به لیست منتقل شد"))
+        }
+    }
+
+    fun setTaskPriority(task: TaskEntity, priority: Int) {
+        viewModelScope.launch {
+            repository.updateTask(task.copy(priority = priority))
+            _events.send(UiEvent.Message("اهمیت به‌روز شد"))
         }
     }
 }

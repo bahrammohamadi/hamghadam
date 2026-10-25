@@ -60,6 +60,7 @@ import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.PillChip
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
+import ir.hamghadam.app.ui.theme.AccentColor
 import ir.hamghadam.app.ui.theme.CardRadius
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 import java.time.ZoneId
@@ -79,6 +80,9 @@ fun SettingsScreen(
     onExport: (Uri) -> Unit,
     onImport: (Uri) -> Unit,
     onReschedule: () -> Unit,
+    onAccentChange: (AccentColor) -> Unit = {},
+    onCompactChange: (Boolean) -> Unit = {},
+    onOpenProfile: () -> Unit = {},
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -140,6 +144,32 @@ fun SettingsScreen(
                             onClick = { onThemeChange(mode) },
                         )
                     }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("رنگ تاکیدی", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (option in AccentColor.entries) {
+                        Box(
+                            Modifier
+                                .size(30.dp)
+                                .background(option.primary, CircleShape)
+                                .clickable { onAccentChange(option) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (settings.accent == option) {
+                                Text("✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("نمایش فشرده", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Text("فاصله‌های کمتر برای صفحه‌های کوچک", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = settings.compact, onCheckedChange = onCompactChange)
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -262,6 +292,31 @@ fun SettingsScreen(
                             Text("اجازهٔ اعلان", fontSize = 11.sp)
                         }
                     }
+                }
+            }
+        }
+
+        item { SectionTitle("حساب کاربری", persianDigits = digits) }
+        item {
+            HamghadamCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenProfile() }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("👤", fontSize = 20.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("حساب‌ها، قفل ورود و ظاهر", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "چند حساب محلی، PIN، شخصی‌سازی رنگ و پشتیبان هر حساب",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text("‹", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

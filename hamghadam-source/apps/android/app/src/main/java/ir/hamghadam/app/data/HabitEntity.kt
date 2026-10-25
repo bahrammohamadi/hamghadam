@@ -11,6 +11,7 @@ data class HabitEntity(
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val archived: Boolean = false,
     val sortOrder: Long = 0,
+    val profileId: String = "",
 )
 
 /** One check-in. The composite key makes double taps idempotent. */

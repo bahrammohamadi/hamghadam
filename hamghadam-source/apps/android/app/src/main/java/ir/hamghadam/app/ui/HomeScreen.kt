@@ -98,6 +98,8 @@ fun HomeScreen(
     onOpenStats: () -> Unit,
     onOpenTasks: () -> Unit,
     onAddForDay: (JalaliDate) -> Unit,
+    onOpenProfile: () -> Unit = {},
+    onLongPress: (TaskEntity) -> Unit = {},
 ) {
     val today = JalaliDate.today()
     val todayEpoch = today.toEpochDay()
@@ -144,6 +146,7 @@ fun HomeScreen(
                 subtitle = PersianCalendar.longDate(today, digits),
                 highlight = todayHighlight,
                 onSettings = onOpenSettings,
+                onProfile = onOpenProfile,
             )
         }
 
@@ -314,6 +317,7 @@ fun HomeScreen(
                             checked = task.isCompleted,
                             onClick = { onEdit(task) },
                             onToggle = { onToggle(task) },
+                            onLongPress = { onLongPress(task) },
                         )
                         if (index != todayTasks.take(6).lastIndex) {
                             Box(
@@ -342,6 +346,7 @@ private fun HomeHeader(
     subtitle: String,
     highlight: String?,
     onSettings: () -> Unit,
+    onProfile: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -351,7 +356,8 @@ private fun HomeHeader(
             modifier = Modifier
                 .size(46.dp)
                 .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(HamghadamPalette.Violet, HamghadamPalette.Terracotta))),
+                .background(Brush.linearGradient(listOf(HamghadamPalette.Violet, HamghadamPalette.Terracotta)))
+                .clickable { onProfile() },
             contentAlignment = Alignment.Center,
         ) {
             Text("ه", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)

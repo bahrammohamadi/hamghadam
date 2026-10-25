@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.hamghadam.app.data.AppSettings
+import ir.hamghadam.app.data.LocalProfile
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.CircleIconButton
@@ -45,9 +46,12 @@ import ir.hamghadam.app.ui.theme.HamghadamPalette
 @Composable
 fun MoreScreen(
     settings: AppSettings,
+    profile: LocalProfile,
+    profileCount: Int,
     openTasks: Int,
     eventCount: Int,
     focusSessions: Int,
+    onOpenProfile: () -> Unit,
     onOpenFocus: () -> Unit,
     onOpenHabits: () -> Unit,
     onOpenStats: () -> Unit,
@@ -79,20 +83,25 @@ fun MoreScreen(
                     .background(Brush.linearGradient(listOf(HamghadamPalette.Violet, Color(0xFF9B7CF9)))),
             ) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenProfile() },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Box(
                             Modifier
                                 .size(46.dp)
                                 .background(Color.White.copy(alpha = 0.22f), CircleShape),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("🌿", fontSize = 20.sp)
+                            Text(profile.emoji, fontSize = 20.sp)
                         }
                         Spacer(Modifier.width(11.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("هم‌قدم", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text(profile.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "کاملاً آفلاین • نسخهٔ ۰.۳.۰",
+                                text = "${PersianText.number(profileCount, digits)} حساب • کاملاً آفلاین • نسخهٔ ۰.۳.۰",
                                 color = Color.White.copy(alpha = 0.82f),
                                 fontSize = 11.sp,
                             )
@@ -134,7 +143,9 @@ fun MoreScreen(
         item { SectionTitle("اپلیکیشن", persianDigits = digits) }
         item {
             HamghadamCard {
-                MoreRow("⚙️", "تنظیمات", "تم، ارقام فارسی، یادآور و پشتیبان", HamghadamPalette.Violet, onOpenSettings)
+                MoreRow("👤", "حساب و پنل کاربری", "حساب‌های محلی، قفل PIN و شخصی‌سازی", HamghadamPalette.Violet, onOpenProfile)
+                Spacer(Modifier.height(2.dp))
+                MoreRow("⚙️", "تنظیمات", "تم، ارقام فارسی، یادآور و پشتیبان", HamghadamPalette.Sky, onOpenSettings)
             }
         }
         item {

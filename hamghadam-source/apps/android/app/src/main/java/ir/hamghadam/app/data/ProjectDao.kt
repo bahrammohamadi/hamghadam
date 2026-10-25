@@ -26,4 +26,7 @@ interface ProjectDao {
 
     @Query("DELETE FROM projects")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM projects WHERE profileId = :profileId")
+    suspend fun deleteByProfile(profileId: String)
 }

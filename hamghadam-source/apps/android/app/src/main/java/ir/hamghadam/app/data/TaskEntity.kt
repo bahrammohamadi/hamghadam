@@ -40,6 +40,8 @@ data class TaskEntity(
     val updatedAtEpochMillis: Long = System.currentTimeMillis(),
     val sortOrder: Long = 0,
     val deletedAtEpochMillis: Long? = null,
+    /** Owning local account; "" is the implicit first account. */
+    val profileId: String = "",
 ) {
     val isCompleted: Boolean get() = completedAtEpochMillis != null
 

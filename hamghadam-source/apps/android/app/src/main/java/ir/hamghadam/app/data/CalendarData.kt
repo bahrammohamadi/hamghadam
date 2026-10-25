@@ -24,6 +24,7 @@ data class PersonalEventEntity(
     val notes: String = "",
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val updatedAtEpochMillis: Long = System.currentTimeMillis(),
+    val profileId: String = "",
 ) {
     fun toModel(): PersonalEvent = PersonalEvent(
         id = id,
@@ -70,6 +71,7 @@ data class FocusSessionEntity(
     val seconds: Int,
     val completed: Boolean = true,
     val startedAtEpochMillis: Long = System.currentTimeMillis(),
+    val profileId: String = "",
 ) {
     fun toRecord(): FocusRecord = FocusRecord(
         id = id,
@@ -94,6 +96,7 @@ data class TemplateEntity(
     val projectId: String? = null,
     val builtin: Boolean = false,
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
+    val profileId: String = "",
 )
 
 @Dao
@@ -112,6 +115,9 @@ interface PersonalEventDao {
 
     @Query("DELETE FROM personal_events")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM personal_events WHERE profileId = :profileId")
+    suspend fun deleteByProfile(profileId: String)
 }
 
 @Dao
@@ -145,6 +151,9 @@ interface FocusSessionDao {
 
     @Query("DELETE FROM focus_sessions")
     suspend fun deleteAll()
+
+    @Query("DELETE FROM focus_sessions WHERE profileId = :profileId")
+    suspend fun deleteByProfile(profileId: String)
 }
 
 @Dao
@@ -160,6 +169,9 @@ interface TemplateDao {
 
         @Query("DELETE FROM task_templates WHERE id = :id")
         suspend fun deleteById(id: String)
+
+        @Query("DELETE FROM task_templates WHERE profileId = :profileId")
+        suspend fun deleteByProfile(profileId: String)
 
         @Query("DELETE FROM task_templates")
         suspend fun deleteAll()

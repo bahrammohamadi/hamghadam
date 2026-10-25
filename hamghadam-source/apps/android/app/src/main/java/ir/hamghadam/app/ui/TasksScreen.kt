@@ -64,6 +64,7 @@ fun TasksScreen(
     onToggle: (TaskEntity) -> Unit,
     onDelete: (TaskEntity) -> Unit,
     onEdit: (TaskEntity) -> Unit,
+    onLongPress: (TaskEntity) -> Unit = {},
 ) {
     val today = JalaliDate.today()
     val todayEpoch = today.toEpochDay()
@@ -242,6 +243,7 @@ fun TasksScreen(
                     onClick = { onEdit(task) },
                     onToggle = { onToggle(task) },
                     onDelete = { onDelete(task) },
+                    onLongPress = { onLongPress(task) },
                 )
             }
         }

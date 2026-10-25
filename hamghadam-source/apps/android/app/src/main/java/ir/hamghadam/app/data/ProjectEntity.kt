@@ -11,4 +11,5 @@ data class ProjectEntity(
     val colorArgb: Int = 0xFF237A69.toInt(),
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
     val archived: Boolean = false,
+    val profileId: String = "",
 )

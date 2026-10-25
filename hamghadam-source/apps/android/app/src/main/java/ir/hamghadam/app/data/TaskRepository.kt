@@ -5,7 +5,10 @@ import ir.hamghadam.app.domain.FocusRecord
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.RepeatRule
 import ir.hamghadam.app.domain.Tags
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
@@ -82,6 +85,8 @@ class TaskRepository(
     private val externalEventDao: ExternalEventDao,
     private val focusDao: FocusSessionDao,
     private val templateDao: TemplateDao,
+    /** When present, every read/write is scoped to the active local account. */
+    private val profiles: ProfileStore? = null,
     private val now: () -> Long = { System.currentTimeMillis() },
 ) {
 
@@ -96,21 +101,34 @@ class TaskRepository(
         templateDao = database.templateDao(),
     )
 
-    fun observeTasks(): Flow<List<TaskEntity>> = taskDao.observeAll()
+    /** The active account id ("" is the implicit first account). */
+    val activeProfileId: String get() = profiles?.activeId?.value ?: DEFAULT_PROFILE_ID
 
-    fun observeProjects(): Flow<List<ProjectEntity>> = projectDao.observeAll()
+    /**
+     * Re-emits whenever the active account changes, so switching accounts swaps
+     * the whole UI without restarting the process.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun <T> scoped(source: Flow<List<T>>, profileOf: (T) -> String): Flow<List<T>> {
+        val store = profiles ?: return source
+        return store.activeId.flatMapLatest { id -> source.map { rows -> rows.filter { profileOf(it) == id } } }
+    }
 
-    fun observeHabits(): Flow<List<HabitEntity>> = habitDao.observeHabits()
+    fun observeTasks(): Flow<List<TaskEntity>> = scoped(taskDao.observeAll()) { it.profileId }
+
+    fun observeProjects(): Flow<List<ProjectEntity>> = scoped(projectDao.observeAll()) { it.profileId }
+
+    fun observeHabits(): Flow<List<HabitEntity>> = scoped(habitDao.observeHabits()) { it.profileId }
 
     fun observeHabitLogs(): Flow<List<HabitLogEntity>> = habitDao.observeLogs()
 
-    fun observePersonalEvents(): Flow<List<PersonalEventEntity>> = eventDao.observeAll()
+    fun observePersonalEvents(): Flow<List<PersonalEventEntity>> = scoped(eventDao.observeAll()) { it.profileId }
 
     fun observeExternalEvents(): Flow<List<ExternalEventEntity>> = externalEventDao.observeAll()
 
-    fun observeFocusSessions(): Flow<List<FocusSessionEntity>> = focusDao.observeAll()
+    fun observeFocusSessions(): Flow<List<FocusSessionEntity>> = scoped(focusDao.observeAll()) { it.profileId }
 
-    fun observeTemplates(): Flow<List<TemplateEntity>> = templateDao.observeAll()
+    fun observeTemplates(): Flow<List<TemplateEntity>> = scoped(templateDao.observeAll()) { it.profileId }
 
     suspend fun findTask(id: String): TaskEntity? = taskDao.findById(id)
 
@@ -141,6 +159,7 @@ class TaskRepository(
             tags = Tags.toCsv(Tags.parseCsv(tags)),
             createdAtEpochMillis = timestamp,
             updatedAtEpochMillis = timestamp,
+            profileId = activeProfileId,
         )
         taskDao.upsert(task)
         return task
@@ -195,6 +214,7 @@ class TaskRepository(
             name = clean,
             colorArgb = colorArgb,
             createdAtEpochMillis = now(),
+            profileId = activeProfileId,
         )
         projectDao.upsert(project)
         return project
@@ -224,6 +244,7 @@ class TaskRepository(
             id = UUID.randomUUID().toString(),
             name = clean,
             createdAtEpochMillis = now(),
+            profileId = activeProfileId,
         )
         habitDao.upsertHabit(habit)
         return habit
@@ -265,6 +286,7 @@ class TaskRepository(
             notes = notes.trim(),
             createdAtEpochMillis = existing?.createdAtEpochMillis ?: timestamp,
             updatedAtEpochMillis = timestamp,
+            profileId = existing?.profileId ?: activeProfileId,
         )
         eventDao.upsert(entity)
         return entity
@@ -272,7 +294,8 @@ class TaskRepository(
 
     suspend fun deletePersonalEvent(id: String) = eventDao.deleteById(id)
 
-    suspend fun loadPersonalEvents(): List<PersonalEventEntity> = eventDao.loadAll()
+    suspend fun loadPersonalEvents(): List<PersonalEventEntity> =
+        eventDao.loadAll().filter { it.profileId == activeProfileId }
 
     // -------------------------------------------------------------- focus
 
@@ -284,15 +307,17 @@ class TaskRepository(
             seconds = record.seconds,
             completed = record.completed,
             startedAtEpochMillis = record.startedAtEpochMillis,
+            profileId = activeProfileId,
         )
         focusDao.upsert(entity)
         return entity
     }
 
-    suspend fun loadFocusSessions(): List<FocusSessionEntity> = focusDao.loadAll()
+    suspend fun loadFocusSessions(): List<FocusSessionEntity> =
+        focusDao.loadAll().filter { it.profileId == activeProfileId }
 
     suspend fun focusDay(epochDay: Long): Pair<Int, Int> {
-        val sessions = focusDao.loadAll().filter { it.epochDay == epochDay }
+        val sessions = focusDao.loadAll().filter { it.epochDay == epochDay && it.profileId == activeProfileId }
         return sessions.count { it.completed } to (sessions.sumOf { it.seconds } / 60)
     }
 
@@ -325,6 +350,7 @@ class TaskRepository(
             projectId = projectId,
             builtin = false,
             createdAtEpochMillis = now(),
+            profileId = activeProfileId,
         )
         templateDao.upsertAll(listOf(template))
         return template
@@ -348,20 +374,30 @@ class TaskRepository(
 
     suspend fun exportBackup(): String = BackupCodec.encode(
         BackupPayload(
-            tasks = taskDao.loadAll(),
-            projects = projectDao.loadAll(),
-            habits = habitDao.loadHabits(),
+            tasks = taskDao.loadAll().filter { it.profileId == activeProfileId },
+            projects = projectDao.loadAll().filter { it.profileId == activeProfileId },
+            habits = habitDao.loadHabits().filter { it.profileId == activeProfileId },
             habitLogs = habitDao.loadLogs(),
-            personalEvents = eventDao.loadAll(),
-            templates = templateDao.loadAll().filterNot { it.builtin },
-            focusSessions = focusDao.loadAll(),
+            personalEvents = eventDao.loadAll().filter { it.profileId == activeProfileId },
+            templates = templateDao.loadAll().filterNot { it.builtin }.filter { it.profileId == activeProfileId },
+            focusSessions = focusDao.loadAll().filter { it.profileId == activeProfileId },
             exportedAtEpochMillis = now(),
         ),
     )
 
     /** Restores a backup over the current data and returns what was written. */
     suspend fun importBackup(text: String): ImportSummary {
-        val payload = BackupCodec.decode(text)
+        val decoded = BackupCodec.decode(text)
+        // Everything restored belongs to the account the user is currently in.
+        val owner = activeProfileId
+        val payload = decoded.copy(
+            tasks = decoded.tasks.map { it.copy(profileId = owner) },
+            projects = decoded.projects.map { it.copy(profileId = owner) },
+            habits = decoded.habits.map { it.copy(profileId = owner) },
+            personalEvents = decoded.personalEvents.map { it.copy(profileId = owner) },
+            templates = decoded.templates.map { it.copy(profileId = owner) },
+            focusSessions = decoded.focusSessions.map { it.copy(profileId = owner) },
+        )
         taskDao.deleteAll()
         projectDao.deleteAll()
         habitDao.deleteAllHabits()
@@ -382,14 +418,15 @@ class TaskRepository(
 
     /** Hint for the backup screen: how much is stored right now. */
     suspend fun counts(): Map<String, Int> {
-        val focus = focusDao.loadAll()
+        val owner = activeProfileId
+        val focus = focusDao.loadAll().filter { it.profileId == owner }
         return mapOf(
-            "tasks" to taskDao.loadAll().size,
-            "projects" to projectDao.loadAll().size,
-            "habits" to habitDao.loadHabits().size,
-            "events" to eventDao.loadAll().size,
+            "tasks" to taskDao.loadAll().count { it.profileId == owner },
+            "projects" to projectDao.loadAll().count { it.profileId == owner },
+            "habits" to habitDao.loadHabits().count { it.profileId == owner },
+            "events" to eventDao.loadAll().count { it.profileId == owner },
             "focus" to focus.count { it.completed },
-            "templates" to templateDao.loadAll().count { !it.builtin },
+            "templates" to templateDao.loadAll().count { !it.builtin && it.profileId == owner },
         )
     }
 
@@ -400,4 +437,42 @@ class TaskRepository(
         ).toEpochDay()
 
     fun todayEpochDay(): Long = LocalDate.now().toEpochDay()
+
+    // -------------------------------------------------------------- accounts
+
+    /** Copies a task (title + schedule + tags) as a new open task today. */
+    suspend fun duplicateTask(task: TaskEntity): TaskEntity? {
+        val timestamp = now()
+        val copy = task.copy(
+            id = UUID.randomUUID().toString(),
+            title = task.title,
+            completedAtEpochMillis = null,
+            createdAtEpochMillis = timestamp,
+            updatedAtEpochMillis = timestamp,
+            deletedAtEpochMillis = null,
+            profileId = activeProfileId,
+        )
+        taskDao.upsert(copy)
+        return copy
+    }
+
+    /** Hard-deletes every row owned by a local account (called when it is removed). */
+    suspend fun deleteProfileData(profileId: String) {
+        taskDao.deleteByProfile(profileId)
+        projectDao.deleteByProfile(profileId)
+        habitDao.deleteHabitsByProfile(profileId)
+        habitDao.deleteOrphanLogs()
+        eventDao.deleteByProfile(profileId)
+        focusDao.deleteByProfile(profileId)
+        templateDao.deleteByProfile(profileId)
+    }
+
+    /** True when the account holds at least one row; used by the delete warning. */
+    suspend fun profileIsEmpty(profileId: String): Boolean =
+        taskDao.loadAll().none { it.profileId == profileId } &&
+            projectDao.loadAll().none { it.profileId == profileId } &&
+            habitDao.loadHabits().none { it.profileId == profileId } &&
+            eventDao.loadAll().none { it.profileId == profileId } &&
+            focusDao.loadAll().none { it.profileId == profileId } &&
+            templateDao.loadAll().none { it.profileId == profileId }
 }

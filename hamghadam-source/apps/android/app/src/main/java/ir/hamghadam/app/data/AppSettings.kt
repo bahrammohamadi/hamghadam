@@ -3,6 +3,7 @@ package ir.hamghadam.app.data
 import android.content.Context
 import ir.hamghadam.app.domain.CalendarSource
 import ir.hamghadam.app.domain.ReminderOptions
+import ir.hamghadam.app.ui.theme.AccentColor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,10 @@ data class AppSettings(
     /** OAuth client id typed by the user; empty means Google sync is off. */
     val googleClientId: String = "",
     val googleConnected: Boolean = false,
+    /** Accent used by buttons, navigation and links. */
+    val accent: AccentColor = AccentColor.VIOLET,
+    /** Compact density trims card padding for small screens. */
+    val compact: Boolean = false,
 )
 
 /**
@@ -82,6 +87,16 @@ class SettingsStore(context: Context) {
         refresh()
     }
 
+    fun setAccent(accent: AccentColor) {
+        prefs.edit().putString(KEY_ACCENT, accent.name).apply()
+        refresh()
+    }
+
+    fun setCompact(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_COMPACT, enabled).apply()
+        refresh()
+    }
+
     fun setGoogleConnected(connected: Boolean) {
         prefs.edit().putBoolean(KEY_GOOGLE_CONNECTED, connected).apply()
         refresh()
@@ -109,6 +124,8 @@ class SettingsStore(context: Context) {
             focusGoalMinutes = prefs.getInt(KEY_FOCUS_GOAL, 50),
             googleClientId = prefs.getString(KEY_GOOGLE_CLIENT, "").orEmpty(),
             googleConnected = prefs.getBoolean(KEY_GOOGLE_CONNECTED, false),
+            accent = AccentColor.fromName(prefs.getString(KEY_ACCENT, null)),
+            compact = prefs.getBoolean(KEY_COMPACT, false),
         )
     }
 
@@ -123,6 +140,8 @@ class SettingsStore(context: Context) {
         private const val KEY_FOCUS_GOAL = "focus_goal"
         private const val KEY_GOOGLE_CLIENT = "google_client_id"
         private const val KEY_GOOGLE_CONNECTED = "google_connected"
+        private const val KEY_ACCENT = "accent"
+        private const val KEY_COMPACT = "compact"
         private const val NO_REMINDER = -1
     }
 }
