@@ -18,17 +18,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -61,17 +61,18 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.QuickAddParser
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.ui.components.Badge
+import ir.hamghadam.app.ui.components.CircleIconButton
 import ir.hamghadam.app.ui.components.EmptyState
 import ir.hamghadam.app.ui.components.HamghadamCard
-import ir.hamghadam.app.ui.components.PillChip
+import ir.hamghadam.app.ui.components.IconTile
+import ir.hamghadam.app.ui.components.MiniBars
+import ir.hamghadam.app.ui.components.OverviewTile
 import ir.hamghadam.app.ui.components.ProgressRing
 import ir.hamghadam.app.ui.components.QuickAction
-import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
-import ir.hamghadam.app.ui.components.StatTile
-import ir.hamghadam.app.ui.components.TagChip
-import ir.hamghadam.app.ui.components.TaskRow
-import ir.hamghadam.app.ui.components.WeekStrip
+import ir.hamghadam.app.ui.components.SoftCard
+import ir.hamghadam.app.ui.components.TimelineRow
+import ir.hamghadam.app.ui.components.softShadow
 import ir.hamghadam.app.ui.theme.CardRadius
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 import java.time.LocalTime
@@ -103,15 +104,15 @@ fun HomeScreen(
     val digits = settings.persianDigits
     val hours = LocalTime.now().hour
 
-    var selectedEpoch by rememberSaveable { mutableStateOf(todayEpoch) }
-    val selected = JalaliDate.fromEpochDay(selectedEpoch)
-    val week = remember(todayEpoch) { PersianCalendar.weekDays(today) }
-
-    val todayTasks = tasks.filter { it.dueEpochDay == todayEpoch }
+    val todayTasks = remember(tasks, todayEpoch) {
+        tasks.filter { it.dueEpochDay == todayEpoch }
+            .sortedWith(compareBy({ it.isCompleted }, { it.dueMinuteOfDay ?: -1 }, { -it.priority }))
+    }
     val doneToday = todayTasks.count { it.isCompleted }
     val openToday = todayTasks.count { !it.isCompleted }
     val focusRecords = remember(focusSessions) { focusSessions.map { it.toRecord() } }
     val focusMinutesToday = FocusStats.minutesOnDay(focusRecords, todayEpoch)
+    val focusWeek = remember(focusRecords, todayEpoch) { FocusStats.week(focusRecords, todayEpoch, days = 7) }
     val habitsDoneToday = habits.count { habit ->
         habitLogs.any { it.habitId == habit.id && it.epochDay == todayEpoch }
     }
@@ -127,27 +128,53 @@ fun HomeScreen(
         )
     }
     val projectNames = remember(projects) { projects.associate { it.id to it.name } }
-    val projectColors = remember(projects) { projects.associate { it.id to Color(it.colorArgb) } }
-    val dayTasks = remember(tasks, selectedEpoch) {
-        tasks.filter { it.dueEpochDay == selectedEpoch }
-            .sortedWith(compareBy({ it.isCompleted }, { it.dueMinuteOfDay ?: -1 }, { -it.priority }))
-    }
-    val dotDays = remember(tasks) { tasks.filter { !it.isCompleted && it.dueEpochDay != null }.mapNotNull { it.dueEpochDay }.toSet() }
     val openPerProject = remember(tasks, projects) {
         projects.map { project -> project to tasks.count { it.projectId == project.id && !it.isCompleted } }
     }
+    val openTotal = tasks.count { !it.isCompleted }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 104.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 108.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            ScreenHeader(
-                title = PersianCalendar.greeting(hours),
-                subtitle = PersianCalendar.longDate(today, digits) +
-                    (todayHighlight?.let { " • " + it } ?: ""),
+            HomeHeader(
+                greeting = PersianCalendar.greeting(hours),
+                subtitle = PersianCalendar.longDate(today, digits),
+                highlight = todayHighlight,
                 onSettings = onOpenSettings,
+            )
+        }
+
+        item {
+            DailyTaskCard(
+                done = doneToday,
+                total = todayTasks.size,
+                minutes = focusMinutesToday,
+                digits = digits,
+                onOpenTasks = onOpenTasks,
+            )
+        }
+
+        item {
+            QuickActionRow(
+                onOpenTasks = onOpenTasks,
+                onOpenFocus = onOpenFocus,
+                onOpenHabits = onOpenHabits,
+                onOpenTemplates = onOpenTemplates,
+            )
+        }
+
+        item {
+            FocusWeekCard(
+                values = focusWeek.map { it.minutes.toFloat() },
+                minutes = focusMinutesToday,
+                sessions = focusTimer.completedToday,
+                goalMinutes = settings.focusGoalMinutes,
+                digits = digits,
+                running = focusTimer.running,
+                onStart = onOpenFocus,
             )
         }
 
@@ -160,28 +187,6 @@ fun HomeScreen(
         }
 
         item {
-            FocusHeroCard(
-                modifier = Modifier.fillMaxWidth(),
-                done = doneToday,
-                total = todayTasks.size,
-                focusMinutes = focusMinutesToday,
-                goalMinutes = settings.focusGoalMinutes,
-                running = focusTimer.running,
-                digits = digits,
-                onStart = onOpenFocus,
-            )
-        }
-
-        item {
-            QuickActionsCard(
-                onOpenTasks = onOpenTasks,
-                onOpenFocus = onOpenFocus,
-                onOpenHabits = onOpenHabits,
-                onOpenTemplates = onOpenTemplates,
-            )
-        }
-
-        item {
             DailyChallengeCard(
                 title = challenge.subtitle,
                 percent = challenge.percent,
@@ -190,52 +195,61 @@ fun HomeScreen(
             )
         }
 
-        item { SectionTitle(title = "یک نگاه", action = { SeeAll("آمار", onOpenStats) }) }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile(
-                    modifier = Modifier.weight(1f),
-                    label = "کار امروز",
-                    value = PersianText.number(openToday, digits),
-                    emoji = "☀️",
-                    tint = HamghadamPalette.Terracotta,
-                    hint = "باز از ${PersianText.number(todayTasks.size, digits)}",
-                )
-                StatTile(
-                    modifier = Modifier.weight(1f),
-                    label = "انجام‌شده",
-                    value = PersianText.number(doneToday, digits),
-                    emoji = "✅",
-                    tint = HamghadamPalette.Olive,
-                    hint = "امروز",
-                )
-            }
+            SectionTitle(
+                title = "نمای کلی",
+                action = { SectionChevron("این هفته", onOpenStats) },
+            )
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatTile(
-                    modifier = Modifier.weight(1f),
-                    label = "تمرکز",
-                    value = PersianText.number(focusMinutesToday, digits) + " دقیقه",
-                    emoji = "🎯",
-                    tint = HamghadamPalette.Violet,
-                    hint = "${PersianText.number(focusTimer.completedToday, digits)} جلسه",
-                )
-                StatTile(
-                    modifier = Modifier.weight(1f),
-                    label = "عادت‌ها",
-                    value = "${PersianText.number(habitsDoneToday, digits)}/${PersianText.number(habits.size, digits)}",
-                    emoji = "🌱",
-                    tint = HamghadamPalette.Sky,
-                    hint = "امروز",
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OverviewTile(
+                        value = PersianText.number(openToday, digits),
+                        label = "کار امروز",
+                        hint = "باز از ${PersianText.number(todayTasks.size, digits)}",
+                        tint = HamghadamPalette.Violet,
+                        soft = HamghadamPalette.VioletSoft,
+                        onClick = onOpenTasks,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OverviewTile(
+                        value = PersianText.number(focusMinutesToday, digits),
+                        label = "دقیقه تمرکز",
+                        hint = "هدف ${PersianText.number(settings.focusGoalMinutes, digits)}",
+                        tint = HamghadamPalette.Terracotta,
+                        soft = HamghadamPalette.Peach,
+                        onClick = onOpenFocus,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OverviewTile(
+                        value = PersianText.number(projects.size, digits),
+                        label = "پروژه‌ها",
+                        hint = "لیست‌های فعال",
+                        tint = HamghadamPalette.Sky,
+                        soft = HamghadamPalette.SkySoft,
+                        onClick = onOpenTasks,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OverviewTile(
+                        value = PersianText.number(openTotal, digits),
+                        label = "همهٔ کارها",
+                        hint = "انجام‌نشده",
+                        tint = HamghadamPalette.Olive,
+                        soft = HamghadamPalette.OliveSoft,
+                        onClick = onOpenTasks,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
 
         item {
             SectionTitle(
                 title = "پروژه‌ها",
-                action = { SeeAll("همهٔ کارها", onOpenTasks) },
+                action = { SectionChevron("همهٔ کارها", onOpenTasks) },
             )
         }
         item {
@@ -248,15 +262,13 @@ fun HomeScreen(
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        TextButton(onClick = onOpenSettings) {
-                            Text("ساخت لیست", fontSize = 11.sp)
-                        }
+                        TextButton(onClick = onOpenSettings) { Text("ساخت لیست", fontSize = 11.sp) }
                     }
                 }
             } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     items(openPerProject, key = { it.first.id }) { (project, openCount) ->
-                        ProjectPill(project = project, openCount = openCount, digits = digits)
+                        ProjectCard(project = project, openCount = openCount, digits = digits, onClick = onOpenTasks)
                     }
                 }
             }
@@ -264,11 +276,13 @@ fun HomeScreen(
 
         item {
             SectionTitle(
-                title = "کارهای " + PersianCalendar.relativeDate(selected, today, digits),
+                title = "کارهای امروز",
+                count = todayTasks.size,
+                persianDigits = digits,
                 action = {
                     Text(
                         text = "+ افزودن",
-                        modifier = Modifier.clickable { onAddForDay(selected) },
+                        modifier = Modifier.clickable { onAddForDay(today) },
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -277,36 +291,146 @@ fun HomeScreen(
             )
         }
         item {
-            HamghadamCard {
-                WeekStrip(
-                    days = week,
-                    todayEpochDay = todayEpoch,
-                    selectedEpochDay = selectedEpoch,
-                    persianDigits = digits,
-                    onSelect = { selectedEpoch = it.toEpochDay() },
-                    dotDays = dotDays,
-                )
+            if (todayTasks.isEmpty()) {
+                HamghadamCard {
+                    EmptyState(
+                        title = "امروز خالی است",
+                        subtitle = "یک کار کوچک بنویس؛ ثبت سریع فارسی هم کار می‌کند.",
+                        emoji = "🌤️",
+                    )
+                }
+            } else {
+                SoftCard {
+                    todayTasks.take(6).forEachIndexed { index, task ->
+                        TimelineRow(
+                            emoji = "📝",
+                            kind = projectNames[task.projectId] ?: "کار امروز",
+                            title = task.title,
+                            tint = HamghadamPalette.Violet,
+                            soft = if (task.isCompleted) HamghadamPalette.OliveSoft else HamghadamPalette.VioletSoft,
+                            meta = task.dueMinuteOfDay?.let { minute ->
+                                PersianText.clock(minute / 60, minute % 60, digits)
+                            } ?: "بدون ساعت",
+                            checked = task.isCompleted,
+                            onClick = { onEdit(task) },
+                            onToggle = { onToggle(task) },
+                        )
+                        if (index != todayTasks.take(6).lastIndex) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 56.dp)
+                                    .height(1.dp)
+                                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)),
+                            )
+                        }
+                    }
+                    if (todayTasks.size > 6) {
+                        TextButton(onClick = onOpenTasks) {
+                            Text("همهٔ ${PersianText.number(todayTasks.size, digits)} کار", fontSize = 12.sp)
+                        }
+                    }
+                }
             }
         }
-        if (dayTasks.isEmpty()) {
-            item {
-                EmptyState(
-                    title = "این روز خالی است",
-                    subtitle = "یک کار کوچک اضافه کن یا روز دیگری را از نوار بالا انتخاب کن.",
-                    emoji = "🍃",
-                )
+    }
+}
+
+@Composable
+private fun HomeHeader(
+    greeting: String,
+    subtitle: String,
+    highlight: String?,
+    onSettings: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(listOf(HamghadamPalette.Violet, HamghadamPalette.Terracotta))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("ه", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.width(11.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = subtitle + (highlight?.let { " • " + it } ?: ""),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = greeting,
+                fontSize = 27.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        CircleIconButton(contentDescription = "تنظیمات", onClick = onSettings) {
+            Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(19.dp))
+        }
+    }
+}
+
+@Composable
+private fun DailyTaskCard(
+    done: Int,
+    total: Int,
+    minutes: Int,
+    digits: Boolean,
+    onOpenTasks: () -> Unit,
+) {
+    val progress = if (total <= 0) 0f else done.toFloat() / total.toFloat()
+    SoftCard(onClick = onOpenTasks) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ProgressRing(
+                progress = progress,
+                size = 84.dp,
+                strokeWidth = 8.dp,
+                color = HamghadamPalette.Terracotta,
+                track = HamghadamPalette.Peach,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = PersianText.number((progress * 100).toInt(), digits) + "٪",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = HamghadamPalette.Terracotta,
+                    )
+                }
             }
-        } else {
-            items(dayTasks, key = { it.id }) { task ->
-                TaskRow(
-                    task = task,
-                    today = today,
-                    persianDigits = digits,
-                    projectName = projectNames[task.projectId],
-                    projectColor = projectColors[task.projectId] ?: MaterialTheme.colorScheme.secondary,
-                    onClick = { onEdit(task) },
-                    onToggle = { onToggle(task) },
-                    onDelete = { onDelete(task) },
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "کار روزانه",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Badge("امروز", HamghadamPalette.Terracotta)
+                }
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    text = if (total == 0) "امروز کاری ثبت نشده" else "انجام ${PersianText.number(done, digits)} از ${PersianText.number(total, digits)} کار",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = "${PersianText.number(minutes, digits)} دقیقه تمرکز امروز",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -314,30 +438,69 @@ fun HomeScreen(
 }
 
 @Composable
-private fun SeeAll(label: String, onClick: () -> Unit) {
-    Text(
-        text = label,
-        modifier = Modifier.clickable { onClick() },
-        color = MaterialTheme.colorScheme.primary,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Medium,
-    )
+private fun QuickActionRow(
+    onOpenTasks: () -> Unit,
+    onOpenFocus: () -> Unit,
+    onOpenHabits: () -> Unit,
+    onOpenTemplates: () -> Unit,
+) {
+    SoftCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            QuickAction("📝", "کارها", HamghadamPalette.Terracotta, onOpenTasks, Modifier.weight(1f))
+            QuickAction("🎯", "تمرکز", HamghadamPalette.Violet, onOpenFocus, Modifier.weight(1f))
+            QuickAction("🌱", "عادت‌ها", HamghadamPalette.Olive, onOpenHabits, Modifier.weight(1f))
+            QuickAction("🧩", "تمپلیت", HamghadamPalette.Amber, onOpenTemplates, Modifier.weight(1f))
+        }
+    }
 }
 
 @Composable
-private fun ProjectPill(project: ProjectEntity, openCount: Int, digits: Boolean) {
-    val color = Color(project.colorArgb)
-    Row(
-        modifier = Modifier
-            .background(color.copy(alpha = 0.12f), CardRadius.chip)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(8.dp).background(color, CircleShape))
-        Spacer(Modifier.width(6.dp))
-        Text(project.name, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.width(6.dp))
-        Text(PersianText.number(openCount, digits), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun FocusWeekCard(
+    values: List<Float>,
+    minutes: Int,
+    sessions: Int,
+    goalMinutes: Int,
+    digits: Boolean,
+    running: Boolean,
+    onStart: () -> Unit,
+) {
+    SoftCard(onClick = onStart) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "تمرکز این هفته",
+                modifier = Modifier.weight(1f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Badge(if (running) "در جریان" else "۷ روز", HamghadamPalette.Violet)
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            MiniBars(
+                values = values.ifEmpty { List(7) { 0f } },
+                tint = HamghadamPalette.Violet,
+                modifier = Modifier.weight(1f),
+                height = 62.dp,
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = PersianText.number(minutes, digits) + " دقیقه",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "${PersianText.number(sessions, digits)} جلسه • هدف ${PersianText.number(goalMinutes, digits)}",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -354,139 +517,53 @@ private fun QuickAddCard(today: JalaliDate, digits: Boolean, onQuickAdd: (String
         text = ""
     }
 
-    HamghadamCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("ثبت سریع", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = "زبان طبیعی: «فردا ۹ صبح جلسه #کار»",
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.height(8.dp))
+    SoftCard {
+        Text(
+            text = "ثبت سریع",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("چه کاری؟ مثال: پس‌فردا ساعت ۱۰ خرید #خانه", fontSize = 12.sp) },
+                placeholder = { Text("فردا ۹ صبح جلسه #کار", fontSize = 12.sp) },
                 singleLine = true,
                 shape = CardRadius.field,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = HamghadamPalette.Violet,
+                ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
+                leadingIcon = { Text("🔍", fontSize = 13.sp) },
             )
             Spacer(Modifier.width(8.dp))
-            Button(
-                onClick = { submit() },
-                enabled = text.isNotBlank(),
-                shape = CardRadius.field,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .softShadow(radius = 24.dp, elevation = 10.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(HamghadamPalette.Violet)
+                    .clickable { submit() },
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "افزودن")
+                Icon(Icons.Filled.Add, contentDescription = "ثبت کار", tint = Color.White, modifier = Modifier.size(22.dp))
             }
         }
-        if (parsed != null && !parsed.isPlainText) {
+        if (parsed != null && text.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                val due = PersianCalendar.dueLabel(parsed.date, parsed.time?.let { it.hour * 60 + it.minute }, today, digits)
-                if (due != null) Badge(due)
-                if (parsed.date == null && parsed.time != null) Badge("امروز", MaterialTheme.colorScheme.secondary)
-                if (parsed.priority == QuickAddParser.PRIORITY_HIGH) Badge("مهم", MaterialTheme.colorScheme.error)
-                for (tag in parsed.tags) {
-                    TagChip(PersianText.toPersianDigits(Tags.display(tag)))
-                }
-            }
-            if (parsed.title.isNotBlank()) {
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    text = "«${parsed.title}»",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FocusHeroCard(
-    modifier: Modifier = Modifier,
-    done: Int,
-    total: Int,
-    focusMinutes: Int,
-    goalMinutes: Int,
-    running: Boolean,
-    digits: Boolean,
-    onStart: () -> Unit,
-) {
-    val progress = if (goalMinutes <= 0) 0f else (focusMinutes.toFloat() / goalMinutes.toFloat()).coerceIn(0f, 1f)
-    Card(
-        modifier = modifier,
-        shape = CardRadius.card,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ProgressRing(
-                progress = progress,
-                size = 72.dp,
-                strokeWidth = 7.dp,
-                color = MaterialTheme.colorScheme.primary,
-                track = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = PersianText.number(focusMinutes, digits),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Text(
-                        text = "دقیقه",
-                        fontSize = 8.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    )
-                }
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = "تمرکز من",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "${PersianText.number(done, digits)} از ${PersianText.number(total, digits)} کار امروز انجام شد",
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
-                )
-                Text(
-                    text = if (running) "جلسه در جریان است…" else "هدف امروز: ${PersianText.number(goalMinutes, digits)} دقیقه",
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f),
-                )
-                Spacer(Modifier.height(6.dp))
-                Button(
-                    onClick = onStart,
-                    shape = CardRadius.chip,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                    modifier = Modifier.height(30.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) {
-                    Text(if (running) "ادامه" else "شروع تمرکز", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                parsed.date?.let { Badge(PersianCalendar.relativeDate(it, today, digits), HamghadamPalette.Violet) }
+                parsed.time?.let { Badge(PersianText.clock(it.hour, it.minute, digits), HamghadamPalette.Sky) }
+                if (parsed.priority == QuickAddParser.PRIORITY_HIGH) Badge("مهم", HamghadamPalette.Terracotta)
+                for (tag in parsed.tags.take(2)) {
+                    Badge(Tags.display(tag), HamghadamPalette.Olive)
                 }
             }
         }
@@ -494,29 +571,40 @@ private fun FocusHeroCard(
 }
 
 @Composable
-private fun QuickActionsCard(
-    onOpenTasks: () -> Unit,
-    onOpenFocus: () -> Unit,
-    onOpenHabits: () -> Unit,
-    onOpenTemplates: () -> Unit,
-) {
-    HamghadamCard(modifier = Modifier.fillMaxWidth()) {
+private fun ProjectCard(project: ProjectEntity, openCount: Int, digits: Boolean, onClick: () -> Unit) {
+    val color = Color(project.colorArgb)
+    SoftCard(modifier = Modifier.width(158.dp), onClick = onClick) {
+        IconTile("📁", color, color.copy(alpha = 0.14f), size = 38.dp)
+        Spacer(Modifier.height(10.dp))
         Text(
-            text = "دسترسی سریع",
-            fontSize = 12.sp,
+            text = project.name,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
-        Spacer(Modifier.height(10.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            QuickAction(emoji = "📝", label = "کارها", tint = HamghadamPalette.Terracotta, onClick = onOpenTasks, modifier = Modifier.weight(1f))
-            QuickAction(emoji = "🎯", label = "تمرکز", tint = HamghadamPalette.Violet, onClick = onOpenFocus, modifier = Modifier.weight(1f))
-            QuickAction(emoji = "🌱", label = "عادت‌ها", tint = HamghadamPalette.Olive, onClick = onOpenHabits, modifier = Modifier.weight(1f))
-            QuickAction(emoji = "🧩", label = "تمپلیت", tint = HamghadamPalette.Amber, onClick = onOpenTemplates, modifier = Modifier.weight(1f))
-        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = "${PersianText.number(openCount, digits)} کار باز",
+            fontSize = 10.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SectionChevron(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(CardRadius.chip)
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(3.dp))
+        Text("‹", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -527,24 +615,28 @@ private fun DailyChallengeCard(
     digits: Boolean,
     steps: List<Triple<String, String, Boolean>>,
 ) {
-    val start = HamghadamPalette.Violet
-    val end = Color(0xFF9B8AF5)
     Box(
         Modifier
             .fillMaxWidth()
-            .background(Brush.linearGradient(listOf(start, end)), CardRadius.card),
+            .softShadow(radius = 24.dp, elevation = 14.dp)
+            .clip(CardRadius.card)
+            .background(
+                Brush.linearGradient(
+                    listOf(HamghadamPalette.Violet, Color(0xFF9B7CF9)),
+                ),
+            ),
     ) {
         Column(Modifier.fillMaxWidth().padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("چالش روزانه", color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    Text("برنامهٔ تو", color = Color.White.copy(alpha = 0.78f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     Spacer(Modifier.height(3.dp))
                     Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
                 Text(
                     text = PersianText.number(percent, digits) + "٪",
                     color = Color.White,
-                    fontSize = 22.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -570,15 +662,12 @@ private fun DailyChallengeCard(
                 ) {
                     Box(
                         Modifier
-                            .size(17.dp)
-                            .background(
-                                if (complete) Color.White else Color.White.copy(alpha = 0.2f),
-                                CircleShape,
-                            ),
+                            .size(18.dp)
+                            .background(if (complete) Color.White else Color.White.copy(alpha = 0.22f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (complete) {
-                            Text("✓", color = start, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("✓", color = HamghadamPalette.Violet, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                     Spacer(Modifier.width(8.dp))

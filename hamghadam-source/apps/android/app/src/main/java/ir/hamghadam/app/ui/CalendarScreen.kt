@@ -19,14 +19,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.hamghadam.app.EventDraft
-import ir.hamghadam.app.toDraft
 import ir.hamghadam.app.data.AppSettings
 import ir.hamghadam.app.data.EventCatalog
 import ir.hamghadam.app.data.ExternalEventEntity
@@ -63,13 +61,18 @@ import ir.hamghadam.app.domain.EventProjection
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.PersianCalendar
 import ir.hamghadam.app.domain.PersianText
+import ir.hamghadam.app.toDraft
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.HamghadamCard
+import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.PillChip
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
+import ir.hamghadam.app.ui.components.SoftCard
 import ir.hamghadam.app.ui.components.TaskRow
 import ir.hamghadam.app.ui.theme.CardRadius
+import ir.hamghadam.app.ui.theme.HamghadamPalette
 
 @Composable
 fun CalendarScreen(
@@ -111,6 +114,7 @@ fun CalendarScreen(
     }
     val selectedEvents = remember(events, selectedEpoch) { EventProjection.forDay(events, selected) }
     val projectNames = remember(projects) { projects.associate { it.id to it.name } }
+    val projectColors = remember(projects) { projects.associate { it.id to Color(it.colorArgb) } }
     val selectedTasks = remember(tasks, selectedEpoch) {
         tasks.filter { it.dueEpochDay == selectedEpoch }.sortedBy { it.completedAtEpochMillis != null }
     }
@@ -124,94 +128,34 @@ fun CalendarScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 104.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 108.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             ScreenHeader(
                 title = "تقویم",
-                subtitle = PersianCalendar.longDate(today, digits) + " • " + catalog.describeFeeds(),
+                subtitle = PersianCalendar.longDate(today, digits) + " • مناسبت‌های آفلاین",
             )
         }
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = CardRadius.card,
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            ) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { openMonth(-1) }) {
-                            Icon(Icons.Filled.KeyboardArrowRight, contentDescription = "ماه قبل")
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = PersianCalendar.monthTitle(anchor, digits),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            if (anchorEpoch != todayEpoch) {
-                                Text(
-                                    text = "بازگشت به امروز",
-                                    modifier = Modifier.clickable {
-                                        anchorEpoch = todayEpoch
-                                        selectedEpoch = todayEpoch
-                                    },
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontSize = 10.sp,
-                                )
-                            }
-                        }
-                        IconButton(onClick = { openMonth(1) }) {
-                            Icon(Icons.Filled.KeyboardArrowLeft, contentDescription = "ماه بعد")
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Row(Modifier.fillMaxWidth()) {
-                        for (dayOfWeek in PersianCalendar.weekOrder()) {
-                            Text(
-                                text = PersianCalendar.weekdayInitial(dayOfWeek),
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    for (week in grid) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            for (cell in week) {
-                                Box(Modifier.weight(1f).padding(1.dp), contentAlignment = Alignment.Center) {
-                                    if (cell != null) {
-                                        DayCell(
-                                            date = cell,
-                                            isToday = cell.toEpochDay() == todayEpoch,
-                                            isSelected = cell.toEpochDay() == selectedEpoch,
-                                            dots = EventProjection.dotColors(byDay[cell.toEpochDay()].orEmpty()),
-                                            isHoliday = byDay[cell.toEpochDay()].orEmpty().any { it.holiday },
-                                            digits = digits,
-                                            onClick = { selectedEpoch = cell.toEpochDay() },
-                                        )
-                                    } else {
-                                        Spacer(Modifier.size(42.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            MonthCard(
+                anchor = anchor,
+                grid = grid,
+                byDay = byDay,
+                todayEpoch = todayEpoch,
+                selectedEpoch = selectedEpoch,
+                digits = digits,
+                onPrevious = { openMonth(-1) },
+                onNext = { openMonth(1) },
+                onSelect = { selectedEpoch = it.toEpochDay() },
+                onToday = {
+                    anchorEpoch = todayEpoch
+                    selectedEpoch = todayEpoch
+                },
+            )
         }
         item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 items(CalendarSource.entries.toList()) { source ->
                     val active = source.id in settings.calendarSources
                     PillChip(
@@ -233,7 +177,7 @@ fun CalendarScreen(
                         text = "+ رویداد",
                         modifier = Modifier.clickable { editing = EventDraft(date = selected) },
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 },
@@ -243,7 +187,7 @@ fun CalendarScreen(
             item {
                 EmptyState(
                     title = "رویدادی ثبت نشده",
-                    subtitle = "مناسبت‌های رسمی و فرهنگی به‌صورت آفلاین همراه اپ هستند؛ می‌توانی رویداد شخصی هم اضافه کنی.",
+                    subtitle = "مناسبت‌های رسمی و فرهنگی آفلاین همراه اپ هستند؛ می‌توانی رویداد شخصی هم اضافه کنی.",
                     emoji = "🗓️",
                 )
             }
@@ -254,9 +198,7 @@ fun CalendarScreen(
                     event = event,
                     digits = digits,
                     editable = personalEntity != null || event.source == CalendarSource.PERSONAL,
-                    onEdit = {
-                        personalEntity?.let { editing = it.toDraft() }
-                    },
+                    onEdit = { personalEntity?.let { editing = it.toDraft() } },
                     onDelete = { personalEntity?.let { onDeleteEvent(it.id) } },
                 )
             }
@@ -271,7 +213,7 @@ fun CalendarScreen(
                         text = "+ کار",
                         modifier = Modifier.clickable { onAddForDay(selected) },
                         color = MaterialTheme.colorScheme.primary,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 },
@@ -279,7 +221,9 @@ fun CalendarScreen(
         }
         if (selectedTasks.isEmpty()) {
             item {
-                EmptyState(title = "کاری برای این روز نیست", subtitle = "روی «+ کار» بزن تا برای همین روز بسازی.", emoji = "☕")
+                HamghadamCard {
+                    EmptyState(title = "کاری برای این روز نیست", subtitle = "روی «+ کار» بزن تا برای همین روز بسازی.", emoji = "☕")
+                }
             }
         } else {
             items(selectedTasks, key = { it.id }) { task ->
@@ -288,6 +232,7 @@ fun CalendarScreen(
                     today = today,
                     persianDigits = digits,
                     projectName = projectNames[task.projectId],
+                    projectColor = projectColors[task.projectId] ?: MaterialTheme.colorScheme.secondary,
                     onClick = { onEdit(task) },
                     onToggle = { onToggle(task) },
                     onDelete = { onDelete(task) },
@@ -295,20 +240,29 @@ fun CalendarScreen(
             }
         }
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                for (source in CalendarSource.entries) {
-                    Box(Modifier.size(8.dp).background(Color(source.colorArgb), CircleShape))
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = source.shortLabel,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.width(10.dp))
+            HamghadamCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    for (source in CalendarSource.entries) {
+                        Box(
+                            Modifier
+                                .size(8.dp)
+                                .background(Color(source.colorArgb), CircleShape),
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            text = source.shortLabel,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                    }
                 }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "تعطیلات و مناسبت‌ها از فایل‌های محلی خوانده می‌شوند؛ تاریخ‌های قمری با برچسب «تقریبی» نشان داده می‌شوند.",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -331,6 +285,97 @@ fun CalendarScreen(
 }
 
 @Composable
+private fun MonthCard(
+    anchor: JalaliDate,
+    grid: List<List<JalaliDate?>>,
+    byDay: Map<Long, List<CalendarEvent>>,
+    todayEpoch: Long,
+    selectedEpoch: Long,
+    digits: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onSelect: (JalaliDate) -> Unit,
+    onToday: () -> Unit,
+) {
+    SoftCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            MonthArrow(Icons.Filled.KeyboardArrowRight, "ماه قبل", onPrevious)
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = PersianCalendar.monthTitle(anchor, digits),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (anchor.toEpochDay() == todayEpoch) "امروز" else "بازگشت به امروز",
+                    modifier = Modifier.clickable { onToday() },
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            MonthArrow(Icons.Filled.KeyboardArrowLeft, "ماه بعد", onNext)
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.fillMaxWidth()) {
+            for (dayOfWeek in PersianCalendar.weekOrder()) {
+                Text(
+                    text = PersianCalendar.weekdayInitial(dayOfWeek),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        for (week in grid) {
+            Row(Modifier.fillMaxWidth()) {
+                for (cell in week) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        if (cell != null) {
+                            DayCell(
+                                date = cell,
+                                isToday = cell.toEpochDay() == todayEpoch,
+                                isSelected = cell.toEpochDay() == selectedEpoch,
+                                dots = EventProjection.dotColors(byDay[cell.toEpochDay()].orEmpty()),
+                                isHoliday = byDay[cell.toEpochDay()].orEmpty().any { it.holiday },
+                                digits = digits,
+                                onClick = { onSelect(cell) },
+                            )
+                        } else {
+                            Spacer(Modifier.size(40.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthArrow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = description, modifier = Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
 private fun DayCell(
     date: JalaliDate,
     isToday: Boolean,
@@ -341,26 +386,25 @@ private fun DayCell(
     onClick: () -> Unit,
 ) {
     val background = when {
-        isSelected -> MaterialTheme.colorScheme.primary
-        isToday -> MaterialTheme.colorScheme.primaryContainer
+        isSelected -> HamghadamPalette.Violet
+        isToday -> HamghadamPalette.AmberSoft
         else -> Color.Transparent
     }
     val textColor = when {
         isSelected -> Color.White
-        isToday -> MaterialTheme.colorScheme.onPrimaryContainer
-        isHoliday -> MaterialTheme.colorScheme.error
+        isToday -> HamghadamPalette.AmberDeep
+        isHoliday -> HamghadamPalette.Terracotta
         else -> MaterialTheme.colorScheme.onSurface
     }
     Column(
         modifier = Modifier
-            .size(40.dp)
-            .clickable { onClick() },
+            .clickable { onClick() }
+            .padding(vertical = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(34.dp)
                 .background(background, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -372,16 +416,12 @@ private fun DayCell(
             )
         }
         Row(
-            modifier = Modifier.height(6.dp),
+            modifier = Modifier.height(7.dp).padding(top = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             for (dot in dots) {
-                Box(
-                    Modifier
-                        .size(4.dp)
-                        .background(Color(dot), CircleShape),
-                )
+                Box(Modifier.size(4.dp).background(Color(dot), CircleShape))
             }
         }
     }
@@ -395,31 +435,35 @@ private fun EventCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = CardRadius.tile,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = editable) { onEdit() }
-                .padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .width(4.dp)
-                    .height(38.dp)
-                    .background(Color(event.colorArgb), CircleShape),
+    val color = Color(event.colorArgb)
+    SoftCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconTile(
+                emoji = when (event.source) {
+                    CalendarSource.OFFICIAL -> "🏛️"
+                    CalendarSource.CULTURAL -> "🌸"
+                    CalendarSource.PERSONAL -> "⭐"
+                    CalendarSource.GOOGLE -> "🔗"
+                },
+                tint = color,
+                soft = color.copy(alpha = 0.14f),
             )
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
+            Spacer(Modifier.width(12.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(enabled = editable) { onEdit() },
+            ) {
+                Text(
+                    text = event.source.label,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = event.title,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -427,8 +471,8 @@ private fun EventCard(
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     if (event.holiday) {
-                        Spacer(Modifier.width(5.dp))
-                        Badge("تعطیل", MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.width(6.dp))
+                        Badge("تعطیل", HamghadamPalette.Terracotta)
                     }
                     if (event.approximate) {
                         Spacer(Modifier.width(4.dp))
@@ -445,14 +489,14 @@ private fun EventCard(
                 )
             }
             if (editable) {
-                IconButton(onClick = onEdit) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                     Text("✎", fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = "حذف رویداد",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                         modifier = Modifier.size(16.dp),
                     )
                 }
@@ -475,10 +519,11 @@ private fun EventEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(26.dp),
         title = {
             Text(
                 text = if (draft.isNew) "رویداد شخصی تازه" else "ویرایش رویداد",
-                fontSize = 17.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
         },
@@ -514,7 +559,7 @@ private fun EventEditorDialog(
                     for (color in EventPalette.picks) {
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
+                                .size(30.dp)
                                 .background(Color(color), CircleShape)
                                 .clickable { draft = draft.copy(colorArgb = color) },
                             contentAlignment = Alignment.Center,
@@ -582,6 +627,7 @@ private fun EventEditorDialog(
     if (confirmDelete && deleteId != null) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
+            shape = RoundedCornerShape(26.dp),
             title = { Text("حذف رویداد؟") },
             text = { Text("«${draft.title}» حذف می‌شود.") },
             confirmButton = {

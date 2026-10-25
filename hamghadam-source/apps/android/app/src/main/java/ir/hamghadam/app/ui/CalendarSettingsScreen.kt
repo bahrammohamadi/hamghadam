@@ -73,9 +73,10 @@ fun CalendarSettingsScreen(
     ) {
         item { SimpleHeader("مناسبت‌ها و تقویم", onBack) }
         item {
-            ScreenHeader(
-                title = "تقویم فعال",
-                subtitle = "کدام لایه‌ها در ماه‌نما دیده شوند؟",
+            Text(
+                text = "کدام لایه‌ها در ماه‌نما دیده شوند؟",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         item {

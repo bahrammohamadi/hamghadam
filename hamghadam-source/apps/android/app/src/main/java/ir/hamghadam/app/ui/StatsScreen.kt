@@ -96,9 +96,10 @@ fun StatsScreen(
     ) {
         item { SimpleHeader("آمار و مرور", onBack) }
         item {
-            ScreenHeader(
-                title = "هفتهٔ تو در یک نگاه",
-                subtitle = PersianCalendar.longDate(today, digits),
+            Text(
+                text = "هفتهٔ تو در یک نگاه • " + PersianCalendar.longDate(today, digits),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         item {

@@ -76,9 +76,10 @@ fun HabitsScreen(
     ) {
         item { SimpleHeader("عادت‌ها", onBack) }
         item {
-            ScreenHeader(
-                title = "عادت‌ها",
-                subtitle = "${PersianText.number(habits.size, digits)} عادت روزانه",
+            Text(
+                text = "${PersianText.number(habits.size, digits)} عادت روزانه • زنجیره‌ات را نشکن",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         item {

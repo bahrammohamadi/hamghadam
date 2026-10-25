@@ -18,14 +18,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,9 +33,12 @@ import androidx.compose.ui.unit.sp
 import ir.hamghadam.app.data.AppSettings
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.ui.components.Badge
+import ir.hamghadam.app.ui.components.CircleIconButton
 import ir.hamghadam.app.ui.components.HamghadamCard
+import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
+import ir.hamghadam.app.ui.components.softShadow
 import ir.hamghadam.app.ui.theme.CardRadius
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 
@@ -45,6 +48,7 @@ fun MoreScreen(
     openTasks: Int,
     eventCount: Int,
     focusSessions: Int,
+    onOpenFocus: () -> Unit,
     onOpenHabits: () -> Unit,
     onOpenStats: () -> Unit,
     onOpenTemplates: () -> Unit,
@@ -55,8 +59,8 @@ fun MoreScreen(
     val digits = settings.persianDigits
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 104.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 108.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             ScreenHeader(
@@ -65,34 +69,37 @@ fun MoreScreen(
                 onSettings = onOpenSettings,
             )
         }
+
         item {
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .background(HamghadamPalette.Terracotta, CardRadius.card),
+                    .softShadow(radius = 24.dp, elevation = 14.dp)
+                    .clip(CardRadius.card)
+                    .background(Brush.linearGradient(listOf(HamghadamPalette.Violet, Color(0xFF9B7CF9)))),
             ) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier
-                                .size(44.dp)
-                                .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                                .size(46.dp)
+                                .background(Color.White.copy(alpha = 0.22f), CircleShape),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("🌿", fontSize = 20.sp)
                         }
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(11.dp))
                         Column(Modifier.weight(1f)) {
                             Text("هم‌قدم", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Text(
-                                text = "نسخهٔ ۰.۳.۰ • کاملاً آفلاین",
-                                color = Color.White.copy(alpha = 0.85f),
+                                text = "کاملاً آفلاین • نسخهٔ ${PersianText.number(3, digits)}.${PersianText.number(0, digits)}",
+                                color = Color.White.copy(alpha = 0.82f),
                                 fontSize = 11.sp,
                             )
                         }
-                        Badge("بدون سرور", Color.White)
+                        SurfaceishBadge()
                     }
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(16.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         MiniStat("کار باز", PersianText.number(openTasks, digits))
                         MiniStat("رویداد", PersianText.number(eventCount, digits))
@@ -104,24 +111,29 @@ fun MoreScreen(
 
         item { SectionTitle("برنامه‌ریزی", persianDigits = digits) }
         item {
-            HamghadamCard(Modifier) {
+            HamghadamCard {
+                MoreRow("🎯", "تمرکز", "تایمر پومودورو و هدف روزانه", HamghadamPalette.Violet, onOpenFocus)
+                Spacer(Modifier.height(2.dp))
                 MoreRow("🌱", "عادت‌ها", "زنجیرهٔ روزانه و این هفته", HamghadamPalette.Olive, onOpenHabits)
+                Spacer(Modifier.height(2.dp))
                 MoreRow("📊", "آمار و مرور", "روند هفتگی کارها و تمرکز", HamghadamPalette.Sky, onOpenStats)
+                Spacer(Modifier.height(2.dp))
                 MoreRow("🧩", "تمپلیت‌ها", "کارهای تکراری را یک‌ضربه‌ای بساز", HamghadamPalette.Amber, onOpenTemplates)
             }
         }
 
         item { SectionTitle("تقویم", persianDigits = digits) }
         item {
-            HamghadamCard(Modifier) {
+            HamghadamCard {
                 MoreRow("🗓️", "مناسبت‌ها و رویدادها", "تعطیلات ۱۴۰۴ و ۱۴۰۵ و تقویم فعال", HamghadamPalette.Terracotta, onOpenCalendarSettings)
+                Spacer(Modifier.height(2.dp))
                 MoreRow("🔗", "تقویم گوگل (اختیاری)", "اتصال با OAuth؛ آفلاین هم کار می‌کند", HamghadamPalette.Sky, onOpenGoogleCalendar)
             }
         }
 
         item { SectionTitle("اپلیکیشن", persianDigits = digits) }
         item {
-            HamghadamCard(Modifier) {
+            HamghadamCard {
                 MoreRow("⚙️", "تنظیمات", "تم، ارقام فارسی، یادآور و پشتیبان", HamghadamPalette.Violet, onOpenSettings)
             }
         }
@@ -130,17 +142,29 @@ fun MoreScreen(
                 text = "داده‌ها روی همین دستگاه می‌مانند. اتصال گوگل فقط برای خواندن رویدادها و کاملاً اختیاری است.",
                 fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
             )
         }
     }
 }
 
 @Composable
+private fun SurfaceishBadge() {
+    Box(
+        Modifier
+            .clip(CardRadius.chip)
+            .background(Color.White.copy(alpha = 0.2f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text("بدون سرور", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
 private fun MiniStat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = Color.White.copy(alpha = 0.8f), fontSize = 10.sp)
+        Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 10.sp)
     }
 }
 
@@ -155,17 +179,13 @@ private fun MoreRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(CardRadius.small)
             .clickable { onClick() }
-            .padding(vertical = 9.dp),
+            .padding(vertical = 8.dp, horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(36.dp).background(tint.copy(alpha = 0.13f), CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(emoji, fontSize = 15.sp)
-        }
-        Spacer(Modifier.width(10.dp))
+        IconTile(emoji, tint, tint.copy(alpha = 0.14f), size = 42.dp)
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             Text(subtitle, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -173,37 +193,32 @@ private fun MoreRow(
         Icon(
             Icons.Filled.KeyboardArrowLeft,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+            modifier = Modifier.size(20.dp),
         )
     }
 }
 
+/** Back circle + big bold title, used by every sub-screen. */
 @Composable
 fun SimpleHeader(title: String, onBack: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Card(
-            shape = CircleShape,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        ) {
-            Row(
-                modifier = Modifier.clickable { onBack() }.padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Filled.KeyboardArrowLeft,
-                    contentDescription = "بازگشت",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(3.dp))
-                Text("بازگشت", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface)
-            }
+        CircleIconButton(contentDescription = "بازگشت", onClick = onBack) {
+            Icon(
+                Icons.Filled.KeyboardArrowLeft,
+                contentDescription = null,
+                modifier = Modifier.size(21.dp),
+            )
         }
-        Spacer(Modifier.width(10.dp))
-        Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = title,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
     }
 }

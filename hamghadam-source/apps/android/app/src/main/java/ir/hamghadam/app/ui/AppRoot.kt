@@ -2,26 +2,33 @@ package ir.hamghadam.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -36,9 +43,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,18 +58,19 @@ import ir.hamghadam.app.AppViewModel
 import ir.hamghadam.app.EventDraft
 import ir.hamghadam.app.TaskDraft
 import ir.hamghadam.app.UiEvent
-import ir.hamghadam.app.toDraft
 import ir.hamghadam.app.data.ThemeMode
 import ir.hamghadam.app.domain.EventProjection
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.Tags
+import ir.hamghadam.app.toDraft
+import ir.hamghadam.app.ui.components.softShadow
+import ir.hamghadam.app.ui.theme.HamghadamPalette
 import ir.hamghadam.app.ui.theme.HamghadamTheme
 
 enum class AppTab(val label: String) {
     HOME("خانه"),
     TASKS("کارها"),
     CALENDAR("تقویم"),
-    FOCUS("تمرکز"),
     MORE("بیشتر"),
     ;
 
@@ -67,7 +79,6 @@ enum class AppTab(val label: String) {
             HOME -> Icons.Filled.Home
             TASKS -> Icons.AutoMirrored.Filled.List
             CALENDAR -> Icons.Filled.DateRange
-            FOCUS -> Icons.Filled.PlayArrow
             MORE -> Icons.Filled.Menu
         }
 }
@@ -79,6 +90,7 @@ private object MoreRoute {
     const val CALENDAR = "calendar-settings"
     const val GOOGLE = "google"
     const val SETTINGS = "settings"
+    const val FOCUS = "focus"
 }
 
 @Composable
@@ -145,7 +157,8 @@ fun AppRoot(viewModel: AppViewModel) {
                     Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .systemBarsPadding()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
                         .imePadding(),
                 ) {
                     TaskEditorScreen(
@@ -170,7 +183,8 @@ fun AppRoot(viewModel: AppViewModel) {
                     Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .systemBarsPadding(),
+                        .statusBarsPadding()
+                        .navigationBarsPadding(),
                 ) {
                     when (moreRoute) {
                         MoreRoute.HABITS -> HabitsScreen(
@@ -231,7 +245,25 @@ fun AppRoot(viewModel: AppViewModel) {
                             onAuthUrlOpened = viewModel::consumeGoogleAuthUrl,
                         )
 
-                        MoreRoute.SETTINGS -> SettingsScreen(
+                        MoreRoute.FOCUS -> FocusScreen(
+                            tasks = tasks,
+                            settings = settings,
+                            timer = focusTimer,
+                            sessions = focusSessions,
+                            onStart = { minutes -> viewModel.startFocus(minutes) },
+                            onStartBreak = viewModel::startBreak,
+                            onPause = viewModel::pauseFocus,
+                            onResume = viewModel::resumeFocus,
+                            onStop = viewModel::stopFocus,
+                            onSelectTask = viewModel::selectFocusTask,
+                            onClearTask = viewModel::clearFocusTask,
+                            onSetDuration = viewModel::setFocusMinutes,
+                            onSetGoal = viewModel::setFocusGoalMinutes,
+                            onOpenTimerSettings = { moreRoute = MoreRoute.SETTINGS },
+                            onBack = { moreRoute = null },
+                        )
+
+                        else -> SettingsScreen(
                             settings = settings,
                             projects = projects,
                             onThemeChange = viewModel::setThemeMode,
@@ -253,123 +285,192 @@ fun AppRoot(viewModel: AppViewModel) {
                 else -> Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     containerColor = MaterialTheme.colorScheme.background,
-                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-                    bottomBar = {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 0.dp,
-                        ) {
-                            for (tab in AppTab.entries) {
-                                NavigationBarItem(
-                                    selected = currentTab == tab,
-                                    onClick = { tabName = tab.name },
-                                    icon = { Icon(tab.icon, contentDescription = null, modifier = Modifier.size(21.dp)) },
-                                    label = { Text(tab.label, fontSize = 10.sp) },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                    ),
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                    snackbarHost = {
+                        SnackbarHost(
+                            hostState = snackbarHostState,
+                            modifier = Modifier
+                                .navigationBarsPadding()
+                                .padding(bottom = 108.dp, start = 16.dp, end = 16.dp),
+                        )
+                    },
+                ) { padding ->
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .background(MaterialTheme.colorScheme.background),
+                    ) {
+                        Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                            when (currentTab) {
+                                AppTab.HOME -> HomeScreen(
+                                    tasks = tasks,
+                                    projects = projects,
+                                    habits = habits,
+                                    habitLogs = habitLogs,
+                                    focusSessions = focusSessions,
+                                    settings = settings,
+                                    focusTimer = focusTimer,
+                                    todayHighlight = todayHighlight,
+                                    onToggle = viewModel::toggleTask,
+                                    onDelete = viewModel::deleteTask,
+                                    onEdit = { activeDraft = it.toDraft() },
+                                    onQuickAdd = viewModel::quickAdd,
+                                    onOpenSettings = { moreRoute = MoreRoute.SETTINGS },
+                                    onOpenFocus = { moreRoute = MoreRoute.FOCUS },
+                                    onOpenHabits = { moreRoute = MoreRoute.HABITS },
+                                    onOpenTemplates = { moreRoute = MoreRoute.TEMPLATES },
+                                    onOpenStats = { moreRoute = MoreRoute.STATS },
+                                    onOpenTasks = { tabName = AppTab.TASKS.name },
+                                    onAddForDay = { day -> activeDraft = TaskDraft(dueDate = day) },
+                                )
+
+                                AppTab.TASKS -> TasksScreen(
+                                    tasks = tasks,
+                                    projects = projects,
+                                    settings = settings,
+                                    onToggle = viewModel::toggleTask,
+                                    onDelete = viewModel::deleteTask,
+                                    onEdit = { activeDraft = it.toDraft() },
+                                )
+
+                                AppTab.CALENDAR -> CalendarScreen(
+                                    tasks = tasks,
+                                    projects = projects,
+                                    settings = settings,
+                                    catalog = viewModel.eventCatalog,
+                                    personalEvents = personalEvents,
+                                    googleEvents = googleEvents,
+                                    onToggle = viewModel::toggleTask,
+                                    onDelete = viewModel::deleteTask,
+                                    onEdit = { activeDraft = it.toDraft() },
+                                    onAddForDay = { day -> activeDraft = TaskDraft(dueDate = day) },
+                                    onSaveEvent = { eventDraft: EventDraft -> viewModel.saveEvent(eventDraft) },
+                                    onDeleteEvent = viewModel::deleteEvent,
+                                    onToggleSource = { source, enabled ->
+                                        viewModel.toggleCalendarSource(source, enabled)
+                                    },
+                                )
+
+                                AppTab.MORE -> MoreScreen(
+                                    settings = settings,
+                                    openTasks = tasks.count { !it.isCompleted },
+                                    eventCount = personalEvents.size + googleEvents.size,
+                                    focusSessions = focusSessions.count { it.completed },
+                                    onOpenFocus = { moreRoute = MoreRoute.FOCUS },
+                                    onOpenHabits = { moreRoute = MoreRoute.HABITS },
+                                    onOpenStats = { moreRoute = MoreRoute.STATS },
+                                    onOpenTemplates = { moreRoute = MoreRoute.TEMPLATES },
+                                    onOpenCalendarSettings = { moreRoute = MoreRoute.CALENDAR },
+                                    onOpenGoogleCalendar = { moreRoute = MoreRoute.GOOGLE },
+                                    onOpenSettings = { moreRoute = MoreRoute.SETTINGS },
                                 )
                             }
                         }
-                    },
-                    floatingActionButton = {
-                        if (currentTab == AppTab.HOME || currentTab == AppTab.TASKS || currentTab == AppTab.CALENDAR) {
-                            FloatingActionButton(
-                                onClick = { activeDraft = TaskDraft(dueDate = today) },
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ) {
-                                Icon(Icons.Filled.Add, contentDescription = "افزودن کار")
-                            }
-                        }
-                    },
-                ) { padding ->
-                    Box(Modifier.fillMaxSize().padding(padding)) {
-                        when (currentTab) {
-                            AppTab.HOME -> HomeScreen(
-                                tasks = tasks,
-                                projects = projects,
-                                habits = habits,
-                                habitLogs = habitLogs,
-                                focusSessions = focusSessions,
-                                settings = settings,
-                                focusTimer = focusTimer,
-                                todayHighlight = todayHighlight,
-                                onToggle = viewModel::toggleTask,
-                                onDelete = viewModel::deleteTask,
-                                onEdit = { activeDraft = it.toDraft() },
-                                onQuickAdd = viewModel::quickAdd,
-                                onOpenSettings = { moreRoute = MoreRoute.SETTINGS },
-                                onOpenFocus = { tabName = AppTab.FOCUS.name },
-                                onOpenHabits = { moreRoute = MoreRoute.HABITS },
-                                onOpenTemplates = { moreRoute = MoreRoute.TEMPLATES },
-                                onOpenStats = { moreRoute = MoreRoute.STATS },
-                                onOpenTasks = { tabName = AppTab.TASKS.name },
-                                onAddForDay = { day -> activeDraft = TaskDraft(dueDate = day) },
-                            )
 
-                            AppTab.TASKS -> TasksScreen(
-                                tasks = tasks,
-                                projects = projects,
-                                settings = settings,
-                                onToggle = viewModel::toggleTask,
-                                onDelete = viewModel::deleteTask,
-                                onEdit = { activeDraft = it.toDraft() },
-                            )
-
-                            AppTab.CALENDAR -> CalendarScreen(
-                                tasks = tasks,
-                                projects = projects,
-                                settings = settings,
-                                catalog = viewModel.eventCatalog,
-                                personalEvents = personalEvents,
-                                googleEvents = googleEvents,
-                                onToggle = viewModel::toggleTask,
-                                onDelete = viewModel::deleteTask,
-                                onEdit = { activeDraft = it.toDraft() },
-                                onAddForDay = { day -> activeDraft = TaskDraft(dueDate = day) },
-                                onSaveEvent = { draft: EventDraft -> viewModel.saveEvent(draft) },
-                                onDeleteEvent = viewModel::deleteEvent,
-                                onToggleSource = { source, enabled ->
-                                    viewModel.toggleCalendarSource(source, enabled)
-                                },
-                            )
-
-                            AppTab.FOCUS -> FocusScreen(
-                                tasks = tasks,
-                                settings = settings,
-                                timer = focusTimer,
-                                sessions = focusSessions,
-                                onStart = { minutes -> viewModel.startFocus(minutes) },
-                                onStartBreak = viewModel::startBreak,
-                                onPause = viewModel::pauseFocus,
-                                onResume = viewModel::resumeFocus,
-                                onStop = viewModel::stopFocus,
-                                onSelectTask = viewModel::selectFocusTask,
-                                onClearTask = viewModel::clearFocusTask,
-                                onSetDuration = viewModel::setFocusMinutes,
-                                onSetGoal = viewModel::setFocusGoalMinutes,
-                                onOpenTimerSettings = { moreRoute = MoreRoute.SETTINGS },
-                            )
-
-                            AppTab.MORE -> MoreScreen(
-                                settings = settings,
-                                openTasks = tasks.count { !it.isCompleted },
-                                eventCount = personalEvents.size + googleEvents.size,
-                                focusSessions = focusSessions.count { it.completed },
-                                onOpenHabits = { moreRoute = MoreRoute.HABITS },
-                                onOpenStats = { moreRoute = MoreRoute.STATS },
-                                onOpenTemplates = { moreRoute = MoreRoute.TEMPLATES },
-                                onOpenCalendarSettings = { moreRoute = MoreRoute.CALENDAR },
-                                onOpenGoogleCalendar = { moreRoute = MoreRoute.GOOGLE },
-                                onOpenSettings = { moreRoute = MoreRoute.SETTINGS },
-                            )
-                        }
+                        FloatingNavBar(
+                            current = currentTab,
+                            onSelect = { tabName = it.name },
+                            onAdd = { activeDraft = TaskDraft(dueDate = today) },
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Floating pill navigation with the four destinations and a black centre "+"
+ * button, matching the reference design. The bar floats above the content; every
+ * screen keeps 104dp bottom padding so nothing hides underneath it.
+ */
+@Composable
+private fun FloatingNavBar(
+    current: AppTab,
+    onSelect: (AppTab) -> Unit,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp)
+            .height(72.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(64.dp)
+                .softShadow(radius = 32.dp, elevation = 18.dp)
+                .clip(RoundedCornerShape(32.dp))
+                .background(MaterialTheme.colorScheme.surface),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NavItem(AppTab.HOME, current, onSelect, Modifier.weight(1f))
+            NavItem(AppTab.TASKS, current, onSelect, Modifier.weight(1f))
+            Spacer(Modifier.width(64.dp))
+            NavItem(AppTab.CALENDAR, current, onSelect, Modifier.weight(1f))
+            NavItem(AppTab.MORE, current, onSelect, Modifier.weight(1f))
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .size(56.dp)
+                .softShadow(radius = 28.dp, elevation = 18.dp)
+                .clip(CircleShape)
+                .background(HamghadamPalette.Scrim)
+                .clickable { onAdd() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Filled.Add,
+                contentDescription = "افزودن کار",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun NavItem(
+    tab: AppTab,
+    current: AppTab,
+    onSelect: (AppTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val active = tab == current
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable { onSelect(tab) }
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .background(if (active) HamghadamPalette.VioletSoft else Color.Transparent, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                tab.icon,
+                contentDescription = tab.label,
+                tint = if (active) HamghadamPalette.Violet else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(19.dp),
+            )
+        }
+        Spacer(Modifier.height(3.dp))
+        Text(
+            text = tab.label,
+            fontSize = 9.sp,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+            color = if (active) HamghadamPalette.Violet else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

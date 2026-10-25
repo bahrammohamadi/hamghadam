@@ -71,6 +71,7 @@ fun FocusScreen(
     onSetDuration: (Int) -> Unit,
     onSetGoal: (Int) -> Unit,
     onOpenTimerSettings: () -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     val today = JalaliDate.today()
     val todayEpoch = today.toEpochDay()
@@ -88,6 +89,9 @@ fun FocusScreen(
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 104.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        if (onBack != null) {
+            item { SimpleHeader("تمرکز") { onBack() } }
+        }
         item {
             ScreenHeader(
                 title = "تمرکز",

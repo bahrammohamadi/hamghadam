@@ -83,9 +83,10 @@ fun GoogleCalendarScreen(
     ) {
         item { SimpleHeader("تقویم گوگل", onBack) }
         item {
-            ScreenHeader(
-                title = "اتصال اختیاری",
-                subtitle = "فقط خواندن رویدادها • آفلاین هرگز نمی‌شکند",
+            Text(
+                text = "اتصال اختیاری • فقط خواندن رویدادها • آفلاین هرگز نمی‌شکند",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         item {

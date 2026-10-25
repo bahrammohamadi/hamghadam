@@ -64,13 +64,15 @@ fun TemplatesScreen(
     ) {
         item { SimpleHeader("تمپلیت‌ها", onBack) }
         item {
-            ScreenHeader(
-                title = "کارهای تکرارشونده",
-                subtitle = "یک بار بساز، هر روز با یک ضربه اجرا کن",
-                trailing = {
-                    TextButton(onClick = { showCreate = true }) { Text("+ تازه", fontSize = 12.sp) }
-                },
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "یک بار بساز، هر روز با یک ضربه اجرا کن",
+                    modifier = Modifier.weight(1f),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = { showCreate = true }) { Text("+ تازه", fontSize = 12.sp) }
+            }
         }
         item {
             HamghadamCard {

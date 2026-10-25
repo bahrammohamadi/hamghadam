@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,10 +42,12 @@ import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.domain.TaskQuery
 import ir.hamghadam.app.ui.components.EmptyState
+import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.PillChip
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.TaskRow
 import ir.hamghadam.app.ui.theme.CardRadius
+import ir.hamghadam.app.ui.theme.HamghadamPalette
 
 private enum class TaskFilter(val label: String) {
     ALL("همه"),
@@ -102,7 +107,7 @@ fun TasksScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 104.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 108.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
@@ -118,9 +123,21 @@ fun TasksScreen(
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("جست‌وجو در عنوان، یادداشت و برچسب", fontSize = 12.sp) },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                },
                 singleLine = true,
-                shape = CardRadius.field,
+                shape = CardRadius.chip,
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = HamghadamPalette.Violet,
+                ),
             )
         }
         item {
@@ -229,18 +246,21 @@ fun TasksScreen(
             }
         }
         item {
-            Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                Text(
-                    text = "نکته: در ثبت سریع از «#برچسب» و «+نام لیست» استفاده کن.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp,
-                )
-                Spacer(Modifier.height(3.dp))
-                Text(
-                    text = "همه‌چیز فقط روی همین دستگاه ذخیره می‌شود.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp,
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconTile("💡", HamghadamPalette.Amber, HamghadamPalette.AmberSoft, size = 34.dp)
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "در ثبت سریع از «#برچسب» و «+نام لیست» استفاده کن؛ همه‌چیز آفلاین است.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 10.sp,
+                    )
+                }
             }
         }
     }

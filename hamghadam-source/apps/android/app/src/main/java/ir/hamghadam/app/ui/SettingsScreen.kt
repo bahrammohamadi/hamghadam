@@ -121,9 +121,10 @@ fun SettingsScreen(
     ) {
         item { SimpleHeader("تنظیمات", onBack) }
         item {
-            ScreenHeader(
-                title = "سلیقهٔ تو",
-                subtitle = "تم، اعداد و یادآورها",
+            Text(
+                text = "تم، اعداد و یادآورها",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
