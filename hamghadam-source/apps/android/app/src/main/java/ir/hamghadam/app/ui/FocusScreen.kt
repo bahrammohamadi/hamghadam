@@ -52,6 +52,8 @@ import ir.hamghadam.app.ui.components.PillChip
 import ir.hamghadam.app.ui.components.ProgressRing
 import ir.hamghadam.app.ui.components.ScreenHeader
 import ir.hamghadam.app.ui.components.SectionTitle
+import ir.hamghadam.app.ui.components.Badge
+import ir.hamghadam.app.ui.components.softShadow
 import ir.hamghadam.app.ui.theme.CardRadius
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 
@@ -101,28 +103,37 @@ fun FocusScreen(
         }
         item {
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .softShadow(radius = 24.dp, elevation = 12.dp),
                 shape = CardRadius.card,
-                colors = CardDefaults.cardColors(containerColor = HamghadamPalette.VioletSoft),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp, horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
-                        text = if (timer.onBreak) "استراحت" else "جلسهٔ تمرکز",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = HamghadamPalette.VioletDeep,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = if (timer.onBreak) "استراحت" else "جلسهٔ تمرکز",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = HamghadamPalette.Violet,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Badge(
+                            text = if (timer.running) "در جریان" else "پومودورو",
+                            tint = HamghadamPalette.Violet,
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
                     ProgressRing(
                         progress = timer.progress,
                         size = 188.dp,
                         strokeWidth = 12.dp,
                         color = HamghadamPalette.Violet,
-                        track = Color.White.copy(alpha = 0.55f),
+                        track = HamghadamPalette.VioletSoft,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             val minutes = timer.remainingSeconds / 60
@@ -136,7 +147,7 @@ fun FocusScreen(
                             Text(
                                 text = if (timer.running) "در جریان" else if (timer.remainingSeconds == 0) "تمام شد" else "آماده",
                                 fontSize = 11.sp,
-                                color = HamghadamPalette.VioletDeep.copy(alpha = 0.7f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -145,7 +156,7 @@ fun FocusScreen(
                     if (taskTitle != null) {
                         Row(
                             modifier = Modifier
-                                .background(Color.White.copy(alpha = 0.7f), CardRadius.chip)
+                                .background(HamghadamPalette.VioletSoft, CardRadius.chip)
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

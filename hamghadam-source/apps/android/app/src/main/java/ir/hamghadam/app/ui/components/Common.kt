@@ -462,7 +462,7 @@ fun MiniBars(
     val max = values.maxOrNull()?.coerceAtLeast(0.001f) ?: 0.001f
     Row(
         modifier = modifier.height(height),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom,
     ) {
         values.forEachIndexed { index, value ->
