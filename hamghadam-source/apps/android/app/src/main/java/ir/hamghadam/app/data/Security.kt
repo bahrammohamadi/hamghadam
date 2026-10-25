@@ -132,7 +132,8 @@ fun normalizePin(raw: String): String = buildString(raw.length) {
 /** Four to eight digits, in any digit script. */
 fun isPinValid(pin: String): Boolean {
     val normalized = normalizePin(pin)
-    return normalized.length in 4..8 && normalized.length == pin.count { it.isDigit() }
+    // Every character must have been a digit: no spaces, letters or punctuation.
+    return normalized.length == pin.length && normalized.length in 4..8
 }
 
 /**
@@ -169,5 +170,5 @@ object PinHasher {
      * Deliberately gentle: a longer lock mostly punishes the real owner.
      */
     fun lockoutSeconds(failures: Int): Long =
-        if (failures <= 0) 0L else minOf(60L, 1L shl minOf(failures, 5))
+        if (failures <= 0) 0L else minOf(60L, 1L shl minOf(failures, 6))
 }
