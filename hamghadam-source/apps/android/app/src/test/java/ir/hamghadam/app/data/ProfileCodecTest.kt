@@ -75,8 +75,8 @@ class ProfileCodecTest {
 
     @Test
     fun differentAccountsHaveDifferentIds() {
-        val created = ProfileStoreishIds()
-        assertNotEquals(created.first(), created.second())
+        val (first, second) = ProfileStoreishIds()
+        assertNotEquals(first, second)
     }
 
     @Test
