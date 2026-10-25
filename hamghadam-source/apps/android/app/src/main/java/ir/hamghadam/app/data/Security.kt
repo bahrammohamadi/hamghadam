@@ -34,8 +34,9 @@ class SecurityStore(context: Context) {
         get() = prefs.getBoolean(KEY_BIOMETRIC, false)
 
     fun setPin(pin: String) {
+        val normalized = normalizePin(pin)
         val salt = PinHasher.newSalt()
-        val hash = PinHasher.derive(pin, salt)
+        val hash = PinHasher.derive(normalized, salt)
         prefs.edit()
             .putString(KEY_SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
             .putString(KEY_HASH, Base64.encodeToString(hash, Base64.NO_WRAP))
@@ -49,7 +50,7 @@ class SecurityStore(context: Context) {
         val hashRaw = prefs.getString(KEY_HASH, null) ?: return false
         val salt = runCatching { Base64.decode(saltRaw, Base64.NO_WRAP) }.getOrNull() ?: return false
         val expected = runCatching { Base64.decode(hashRaw, Base64.NO_WRAP) }.getOrNull() ?: return false
-        return PinHasher.verify(pin, salt, expected)
+        return PinHasher.verify(normalizePin(pin), salt, expected)
     }
 
     fun clearPin() {
@@ -110,7 +111,29 @@ class SecurityStore(context: Context) {
     }
 }
 
-fun isPinValid(pin: String): Boolean = pin.length in 4..8 && pin.all { it.isDigit() }
+/**
+ * Turns Persian (۰-۹) and Arabic-Indic (٠-٩) digits into ASCII and drops
+ * everything else. The keypad has always produced ASCII; normalising here means
+ * a PIN typed with a Persian keyboard still unlocks with the keypad, instead of
+ * silently becoming impossible to enter.
+ */
+fun normalizePin(raw: String): String = buildString(raw.length) {
+    for (ch in raw) {
+        val digit = when (ch) {
+            in '0'..'9' -> ch - '0'
+            in '۰'..'۹' -> ch - '۰'
+            in '٠'..'٩' -> ch - '٠'
+            else -> -1
+        }
+        if (digit in 0..9) append('0' + digit)
+    }
+}
+
+/** Four to eight digits, in any digit script. */
+fun isPinValid(pin: String): Boolean {
+    val normalized = normalizePin(pin)
+    return normalized.length in 4..8 && normalized.length == pin.count { it.isDigit() }
+}
 
 /**
  * PBKDF2-HMAC-SHA256 helpers, extracted from the store so the crypto can be
@@ -134,13 +157,17 @@ object PinHasher {
     }.getOrElse { ByteArray(KEY_BITS / 8) }
 
     /** Constant-time comparison, so a wrong PIN cannot be guessed byte by byte. */
-    fun verify(pin: String, salt: ByteArray, expected: ByteArray): Boolean =
-        MessageDigest.isEqual(expected, derive(pin, salt))
+    fun verify(
+        pin: String,
+        salt: ByteArray,
+        expected: ByteArray,
+        iterations: Int = ITERATIONS,
+    ): Boolean = MessageDigest.isEqual(expected, derive(pin, salt, iterations))
 
     /**
      * Failure 1 → 2s, 2 → 4s, 3 → 8s, 4 → 16s, 5 → 32s, 6+ → 60s.
      * Deliberately gentle: a longer lock mostly punishes the real owner.
      */
     fun lockoutSeconds(failures: Int): Long =
-        if (failures <= 0) 0L else minOf(60L, 1L shl minOf(failures - 1, 5))
+        if (failures <= 0) 0L else minOf(60L, 1L shl minOf(failures, 5))
 }

@@ -21,8 +21,17 @@ class PinSecurityTest {
     fun pinRejectsNonDigitsAndEmptyInput() {
         assertFalse(isPinValid(""))
         assertFalse(isPinValid("12a4"))
-        assertFalse(isPinValid("۱۲۳۴")) // Persian digits are a different code point
         assertFalse(isPinValid("12 34"))
+        assertFalse(isPinValid("1234!"))
+    }
+
+    @Test
+    fun persianAndArabicDigitsAreNormalisedToAscii() {
+        assertEquals("1234", normalizePin("۱۲۳۴"))
+        assertEquals("5678", normalizePin("٥٦٧٨"))
+        assertEquals("12", normalizePin("a1 2"))
+        assertTrue(isPinValid("۱۲۳۴"))
+        assertEquals(4, normalizePin("۱۲۳۴").length)
     }
 
     @Test
@@ -45,9 +54,9 @@ class PinSecurityTest {
     fun verifyAcceptsTheRightPinAndRejectsEverythingElse() {
         val salt = PinHasher.newSalt()
         val expected = PinHasher.derive("246810", salt, iterations = 1_000)
-        assertTrue(PinHasher.verify("246810", salt, expected))
-        assertFalse(PinHasher.verify("246811", salt, expected))
-        assertFalse(PinHasher.verify("", salt, expected))
+        assertTrue(PinHasher.verify("246810", salt, expected, iterations = 1_000))
+        assertFalse(PinHasher.verify("246811", salt, expected, iterations = 1_000))
+        assertFalse(PinHasher.verify("", salt, expected, iterations = 1_000))
     }
 
     @Test

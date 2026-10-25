@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.hamghadam.app.LockUiState
 import ir.hamghadam.app.data.LocalProfile
+import ir.hamghadam.app.data.normalizePin
 import ir.hamghadam.app.ui.theme.CardRadius
 import ir.hamghadam.app.ui.theme.HamghadamPalette
 import kotlinx.coroutines.delay
@@ -236,7 +237,7 @@ fun PinDialog(
                 Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 androidx.compose.material3.OutlinedTextField(
                     value = pin,
-                    onValueChange = { value -> if (value.length <= 8 && value.all(Char::isDigit)) pin = value },
+                    onValueChange = { value -> pin = normalizePin(value).take(8) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("PIN (۴ تا ۸ رقم)", fontSize = 12.sp) },
                     singleLine = true,
