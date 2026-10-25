@@ -9,8 +9,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import ir.hamghadam.app.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -197,26 +199,37 @@ private val HamghadamShapes = Shapes(
 )
 
 private fun bold(size: Int) = TextStyle(
-    fontFamily = FontFamily.Default,
+    fontFamily = Vazirmatn,
     fontWeight = FontWeight.Bold,
     fontSize = size.sp,
 )
 
-/** Platform default family renders Persian correctly on every OEM. */
+/**
+ * Vazirmatn (OFL) ships with the app so Persian text is drawn by a typeface
+ * designed for it, instead of whatever Arabic-capable font the OEM picked.
+ * Four weights cover everything the UI uses; each file is ~120 KB.
+ */
+val Vazirmatn = FontFamily(
+    Font(R.font.vazirmatn_regular, FontWeight.Normal),
+    Font(R.font.vazirmatn_medium, FontWeight.Medium),
+    Font(R.font.vazirmatn_bold, FontWeight.Bold),
+    Font(R.font.vazirmatn_extrabold, FontWeight.ExtraBold),
+)
+
 private val HamghadamTypography = Typography(
     displaySmall = bold(34),
     headlineLarge = bold(30),
     headlineMedium = bold(26),
     headlineSmall = bold(22),
     titleLarge = bold(20),
-    titleMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
-    titleSmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
-    bodyLarge = TextStyle(fontFamily = FontFamily.Default, fontSize = 15.sp),
-    bodyMedium = TextStyle(fontFamily = FontFamily.Default, fontSize = 13.sp),
-    bodySmall = TextStyle(fontFamily = FontFamily.Default, fontSize = 11.sp),
-    labelLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
-    labelMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Medium, fontSize = 11.sp),
-    labelSmall = TextStyle(fontFamily = FontFamily.Default, fontSize = 10.sp),
+    titleMedium = TextStyle(fontFamily = Vazirmatn, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+    titleSmall = TextStyle(fontFamily = Vazirmatn, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+    bodyLarge = TextStyle(fontFamily = Vazirmatn, fontSize = 15.sp),
+    bodyMedium = TextStyle(fontFamily = Vazirmatn, fontSize = 13.sp),
+    bodySmall = TextStyle(fontFamily = Vazirmatn, fontSize = 11.sp),
+    labelLarge = TextStyle(fontFamily = Vazirmatn, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+    labelMedium = TextStyle(fontFamily = Vazirmatn, fontWeight = FontWeight.Medium, fontSize = 11.sp),
+    labelSmall = TextStyle(fontFamily = Vazirmatn, fontSize = 10.sp),
 )
 
 @Composable
