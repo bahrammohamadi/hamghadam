@@ -65,5 +65,8 @@ NestJS + TypeScript، REST نسخه‌دار `/v1`, OpenAPI؛ PostgreSQL با FK
 ## تاریخ و recurrence
 ذخیره‌سازی زمان لحظه‌ای UTC، رویداد تمام‌روزه به‌صورت local date interval و timezone. زمان برنامه‌ریزی منطقه‌ای به `ZoneId` و در سرور `timestamptz` با timezone نامی. تکرار ماهانهٔ روز ۳۱: policy صریح (آخرین روز ماه یا skip)؛ پیش‌فرض نمایشی: آخرین روز، قابل انتخاب. محاسبهٔ سال شمسی کبیسه و تبدیل فقط با کتابخانهٔ آزموده/نسخه‌بندی و آزمون مرجع؛ مناسبت قمری اعلامی، feed رسمی قابل نسخه‌بندی و override قابل ممیزی، نه پیش‌بینی قطعی. DST و تغییر timezone دستگاه سناریوی تست.
 
+## وضعیت پیاده‌سازی موبایل
+لایهٔ اندروید این نسخه (Room، تقویم جلالی، ثبت سریع فارسی، یادآور محلی، پشتیبان JSON) در `docs/04-android-implementation.fa.md` ثبت شده است. outbox و همگام‌سازی هنوز پیاده نشده‌اند؛ طراحی زیر مرجع فاز بعد است.
+
 ## API ابتدایی
 در `services/api/openapi.yaml`: endpointهای health و افزودن/گرفتن وظیفهٔ local-sync pilot. هنوز auth و sync واقعی پیاده‌سازی نشده‌اند. همهٔ APIهای بعدی باید schema، pagination، error envelope، version و idempotency را مشخص کنند.

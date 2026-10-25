@@ -1,0 +1,48 @@
+# ساخت و تست APK. مسیر نهایی در مخزن: .github/workflows/android-apk.yml
+# تمام منطق در hamghadam-source/ci/build.sh است تا بدون ویرایش این فایل هم
+# بتوان CI را اصلاح کرد (توکن این مخزن اجازهٔ نوشتن در .github/workflows را ندارد).
+
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Test + build debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build and test
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash hamghadam-source/ci/build.sh
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hamghadam-debug-apk
+          path: hamghadam-source/apps/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
