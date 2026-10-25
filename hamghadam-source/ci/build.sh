@@ -167,12 +167,16 @@ for c in "$SDK/build-tools/35.0.0/aapt2" "$SDK/build-tools/35.0.0/aapt" "${SM:+$
     [ -n "$c" ] && [ -x "$c" ] && { AAPT="$c"; break; }
 done
 if [ -n "$AAPT" ]; then
-    BADGING=$("$AAPT" dump badging "$APK" 2>/dev/null | head -40)
-    echo "$BADGING" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|launchable-activity)" || true
-    PKG=$(printf '%s\n' "$BADGING" | sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" | head -1)
-    VC=$(printf '%s\n' "$BADGING" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p" | head -1)
-    MINSDK=$(printf '%s\n' "$BADGING" | sed -n "s/^sdkVersion:'\\([^']*\\)'.*/\\1/p" | head -1)
-    LAUNCH=$(printf '%s\n' "$BADGING" | grep -c "^launchable-activity" || true)
+    # خروجی کامل در فایل ذخیره می‌شود: badging برای هر زبان یک application-label دارد
+    # و برش‌دادنش باعث می‌شد launchable-activity از انتها گم شود.
+    "$AAPT" dump badging "$APK" > "$WORK_DIR/badging.txt" 2>"$WORK_DIR/badging.err" || true
+    BADGING_FILE="$WORK_DIR/badging.txt"
+    grep -E "^(package|sdkVersion|minSdkVersion|targetSdkVersion|application-label|launchable-activity):?" \
+        "$BADGING_FILE" | head -12 || true
+    PKG=$(sed -n "s/^package: name='\\([^']*\\)'.*/\1/p" "$BADGING_FILE" | head -1)
+    VC=$(sed -n "s/.*versionCode='\\([^']*\\)'.*/\1/p" "$BADGING_FILE" | head -1)
+    MINSDK=$(sed -n "s/^\\(min\\)\\{0,1\\}sdkVersion:'\\([^']*\\)'.*/\2/p" "$BADGING_FILE" | head -1)
+    LAUNCH=$(grep -c "^launchable-activity" "$BADGING_FILE" || true)
     notice "APK: package=${PKG:-?} versionCode=${VC:-?} minSdk=${MINSDK:-?} launcher=${LAUNCH:-0} size=${APK_SIZE}B"
     [ "${PKG:-}" = "ir.hamghadam.app" ] || die "شناسهٔ بستهٔ APK غیرمنتظره است: ${PKG:-خالی}"
     [ "${LAUNCH:-0}" -ge 1 ] || die "APK هیچ activity قابل اجرا (launcher) ندارد"
