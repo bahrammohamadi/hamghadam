@@ -49,6 +49,7 @@ import ir.hamghadam.app.TaskDraft
 import ir.hamghadam.app.UiEvent
 import ir.hamghadam.app.toDraft
 import ir.hamghadam.app.data.ThemeMode
+import ir.hamghadam.app.domain.EventProjection
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.ui.theme.HamghadamTheme
@@ -109,6 +110,14 @@ fun AppRoot(viewModel: AppViewModel) {
             val currentTab = AppTab.entries.firstOrNull { it.name == tabName } ?: AppTab.HOME
             val today = JalaliDate.today()
             val knownTags = remember(tasks) { Tags.counts(tasks.map { it.tags }).map { it.first } }
+            val todayHighlight = remember(personalEvents, googleEvents, settings.calendarSources, today) {
+                val year = today.year
+                val base = viewModel.eventCatalog.eventsForYear(year) +
+                    EventProjection.expandPersonal(personalEvents.map { it.toModel() }, year) +
+                    googleEvents.mapNotNull { it.toEvent() }
+                EventProjection.enabled(base, settings.calendarSources)
+                    .firstOrNull { it.date == today }?.title
+            }
 
             LaunchedEffect(viewModel) {
                 viewModel.events.collect { event ->
@@ -287,6 +296,7 @@ fun AppRoot(viewModel: AppViewModel) {
                                 focusSessions = focusSessions,
                                 settings = settings,
                                 focusTimer = focusTimer,
+                                todayHighlight = todayHighlight,
                                 onToggle = viewModel::toggleTask,
                                 onDelete = viewModel::deleteTask,
                                 onEdit = { activeDraft = it.toDraft() },

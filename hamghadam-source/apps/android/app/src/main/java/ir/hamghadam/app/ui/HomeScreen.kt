@@ -85,6 +85,7 @@ fun HomeScreen(
     focusSessions: List<FocusSessionEntity>,
     settings: AppSettings,
     focusTimer: FocusTimerState,
+    todayHighlight: String? = null,
     onToggle: (TaskEntity) -> Unit,
     onDelete: (TaskEntity) -> Unit,
     onEdit: (TaskEntity) -> Unit,
@@ -144,7 +145,8 @@ fun HomeScreen(
         item {
             ScreenHeader(
                 title = PersianCalendar.greeting(hours),
-                subtitle = PersianCalendar.longDate(today, digits),
+                subtitle = PersianCalendar.longDate(today, digits) +
+                    (todayHighlight?.let { " • " + it } ?: ""),
                 onSettings = onOpenSettings,
             )
         }
@@ -230,16 +232,28 @@ fun HomeScreen(
             }
         }
 
-        if (openPerProject.isNotEmpty()) {
-            item {
-                SectionTitle(
-                    title = "پروژه‌ها",
-                    action = {
-                        SeeAll("همهٔ کارها", onOpenTasks)
-                    },
-                )
-            }
-            item {
+        item {
+            SectionTitle(
+                title = "پروژه‌ها",
+                action = { SeeAll("همهٔ کارها", onOpenTasks) },
+            )
+        }
+        item {
+            if (openPerProject.isEmpty()) {
+                HamghadamCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "هنوز لیستی نساخته‌ای؛ کارها را در لیست‌های رنگی دسته‌بندی کن.",
+                            modifier = Modifier.weight(1f),
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        TextButton(onClick = onOpenSettings) {
+                            Text("ساخت لیست", fontSize = 11.sp)
+                        }
+                    }
+                }
+            } else {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(openPerProject, key = { it.first.id }) { (project, openCount) ->
                         ProjectPill(project = project, openCount = openCount, digits = digits)
