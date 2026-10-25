@@ -77,8 +77,8 @@ data class ProfileActions(
     val onSecureScreen: (Boolean) -> Unit,
     val onAccent: (AccentColor) -> Unit,
     val onCompact: (Boolean) -> Unit,
-    val onExport: (Uri) -> Unit,
-    val onImport: (Uri) -> Unit,
+    val onExport: (Uri, String?) -> Unit,
+    val onImport: (Uri, String?) -> Unit,
     val onOpenSettings: () -> Unit,
     val onBack: () -> Unit,
 )
@@ -103,12 +103,23 @@ fun ProfileScreen(
     var pinError by remember { mutableStateOf<String?>(null) }
     var showDisablePin by remember { mutableStateOf(false) }
 
+    // Backup passwords: null means "not asked yet"; "" means "no password".
+    var pendingExportPassword by remember { mutableStateOf<String?>(null) }
+    var backupPassword by remember { mutableStateOf("") }
+    var showBackupPassword by remember { mutableStateOf(false) }
+    var backupMode by remember { mutableStateOf("export") }
+
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri -> if (uri != null) actions.onExport(uri) }
+    ) { uri ->
+        if (uri != null) actions.onExport(uri, pendingExportPassword.orEmpty().ifBlank { null })
+        pendingExportPassword = null
+    }
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) actions.onImport(uri) }
+    ) { uri ->
+        if (uri != null) actions.onImport(uri, backupPassword.ifBlank { null })
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -316,23 +327,46 @@ fun ProfileScreen(
         item {
             HamghadamCard {
                 Text(
-                    text = "پشتیبان شامل دادهٔ همین حساب است (کارها، لیست‌ها، عادت‌ها، رویدادها، تمپلیت‌ها و جلسه‌های تمرکز).",
+                    text = "پشتیبان شامل دادهٔ همین حساب است (کارها، لیست‌ها، عادت‌ها، رویدادها، تمپلیت‌ها و جلسه‌های تمرکز). " +
+                        "اگر رمز بدهی، فایل با AES-256-GCM رمزگذاری می‌شود و بدون همان رمز باز نمی‌شود.",
                     fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = { exportLauncher.launch("hamghadam-${active.name}-backup.json") },
+                        onClick = {
+                            backupMode = "export"
+                            backupPassword = ""
+                            showBackupPassword = true
+                        },
                         modifier = Modifier.weight(1f),
                         shape = CardRadius.field,
                     ) { Text("خروجی", fontSize = 12.sp) }
                     OutlinedButton(
-                        onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                        onClick = {
+                            backupMode = "import"
+                            backupPassword = ""
+                            showBackupPassword = true
+                        },
                         modifier = Modifier.weight(1f),
                         shape = CardRadius.field,
                     ) { Text("بازیابی", fontSize = 12.sp) }
                 }
+                Spacer(Modifier.height(8.dp))
+                val status = ir.hamghadam.app.data.AppDatabase.cryptoStatus
+                val statusText = when (status) {
+                    "encrypted+keystore" -> "🔒 پایگاه‌داده با AES-256 و کلید Keystore رمزگذاری شده است"
+                    "encrypted+prefs" -> "🔒 پایگاه‌داده رمزگذاری شده (کلید در حافظهٔ خصوصی اپ)"
+                    "plaintext" -> "⚠️ رمزگذاری پایگاه‌داده فعال نشد؛ داده‌ها به‌صورت ساده ذخیره می‌شوند"
+                    else -> "وضعیت رمزگذاری در حال بررسی است"
+                }
+                Text(
+                    text = statusText,
+                    fontSize = 10.sp,
+                    color = if (status == "plaintext") MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = actions.onOpenSettings) {
                     Text("تنظیمات کامل (یادآور، لیست‌ها، تمرکز)", fontSize = 11.sp)
@@ -414,6 +448,26 @@ fun ProfileScreen(
                     pinError = null
                 } else {
                     pinError = "PIN ذخیره نشد"
+                }
+            },
+        )
+    }
+
+    if (showBackupPassword) {
+        BackupPasswordDialog(
+            isExport = backupMode == "export",
+            password = backupPassword,
+            onPasswordChange = { backupPassword = it },
+            onDismiss = { showBackupPassword = false },
+            onConfirm = {
+                showBackupPassword = false
+                if (backupMode == "export") {
+                    pendingExportPassword = backupPassword
+                    exportLauncher.launch("hamghadam-${active.name}-backup.json")
+                } else {
+                    importLauncher.launch(
+                        arrayOf("application/json", "text/plain", "application/octet-stream"),
+                    )
                 }
             },
         )
@@ -567,3 +621,57 @@ private fun ProfileEditorDialog(
     )
 }
 
+/**
+ * Optional password for backup export/import. Empty keeps the file as plain
+ * JSON, which is what 0.4.0 wrote, so old backups stay readable.
+ */
+@Composable
+private fun BackupPasswordDialog(
+    isExport: Boolean,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = CardRadius.card,
+        title = {
+            Text(
+                if (isExport) "رمز پشتیبان (اختیاری)" else "رمز پشتیبان",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = if (isExport) {
+                        "اگر رمز بدهی، فایل با AES-256-GCM رمزگذاری می‌شود. خالی بگذاری، فایل JSON ساده ذخیره می‌شود."
+                    } else {
+                        "اگر فایل رمزگذاری‌شده است رمز را وارد کن؛ برای فایل JSON ساده خالی بگذار."
+                    },
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    singleLine = true,
+                    label = { Text("رمز", fontSize = 11.sp) },
+                    placeholder = { Text("بدون رمز", fontSize = 11.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(if (isExport) "ادامه" else "بازیابی", fontSize = 12.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("انصراف", fontSize = 12.sp) }
+        },
+    )
+}

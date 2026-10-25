@@ -817,31 +817,46 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // ----------------------------------------------------------------- data
 
-    fun exportBackup(uri: Uri) {
+    /**
+     * @param password when non-blank the JSON is wrapped in an AES-256-GCM
+     * envelope (PBKDF2-SHA256, 120k iterations). Empty writes plain JSON so an
+     * unencrypted backup keeps working exactly like 0.4.0.
+     */
+    fun exportBackup(uri: Uri, password: String? = null) {
         viewModelScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
                     val json = repository.exportBackup()
+                    val payload = if (password.isNullOrBlank()) {
+                        json.toByteArray(Charsets.UTF_8)
+                    } else {
+                        BackupCipher.encrypt(json, password)
+                    }
                     val resolver = getApplication<Application>().contentResolver
-                    resolver.openOutputStream(uri)?.use { stream ->
-                        stream.write(json.toByteArray(Charsets.UTF_8))
-                    } ?: throw IllegalStateException("نوشتن فایل ممکن نشد")
+                    resolver.openOutputStream(uri)?.use { stream -> stream.write(payload) }
+                        ?: throw IllegalStateException("نوشتن فایل ممکن نشد")
                 }
             }.onSuccess {
-                _events.send(UiEvent.Message("فایل پشتیبان ذخیره شد"))
+                _events.send(
+                    UiEvent.Message(
+                        if (password.isNullOrBlank()) "فایل پشتیبان ذخیره شد" else "فایل پشتیبان رمزگذاری‌شده ذخیره شد",
+                    ),
+                )
             }.onFailure {
                 _events.send(UiEvent.Message("ذخیرهٔ پشتیبان ناموفق بود"))
             }
         }
     }
 
-    fun importBackup(uri: Uri) {
+    fun importBackup(uri: Uri, password: String? = null) {
         viewModelScope.launch {
             val message = runCatching {
                 withContext(Dispatchers.IO) {
                     val resolver = getApplication<Application>().contentResolver
-                    val text = resolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
                         ?: throw IllegalStateException("خواندن فایل ممکن نشد")
+                    // Plain JSON (0.4.0 backups) and encrypted envelopes both open here.
+                    val text = BackupCipher.open(bytes, password)
                     repository.importBackup(text)
                 }
             }.fold(
