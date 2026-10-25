@@ -1,0 +1,6 @@
+
+# Raw generated art (full-resolution source renders). The shipped assets live in
+# apps/android/app/src/main/res/drawable-nodpi.
+hamghadam-source/assets-raw/
+hamghadam-source/assets-raw2/
+hamghadam-source/assets-cut2/

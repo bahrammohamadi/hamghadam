@@ -52,6 +52,9 @@ import ir.hamghadam.app.domain.ReminderOptions
 import ir.hamghadam.app.domain.RepeatRule
 import ir.hamghadam.app.domain.Tags
 import ir.hamghadam.app.ui.components.CircleIconButton
+import ir.hamghadam.app.ui.components.ClayCard
+import ir.hamghadam.app.ui.components.SectionArt
+import ir.hamghadam.app.ui.components.SectionArtwork
 import ir.hamghadam.app.ui.components.PillChip
 
 @Composable
@@ -86,10 +89,11 @@ fun TaskEditorScreen(
                     modifier = Modifier.size(20.dp),
                 )
             }
+            SectionArt(art = SectionArtwork.TASKS, size = 44.dp)
             Text(
                 text = if (draft.isNew) "کار تازه" else "ویرایش کار",
                 modifier = Modifier.weight(1f),
-                fontSize = 24.sp,
+                fontSize = 23.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -389,23 +393,17 @@ fun TaskEditorScreen(
     }
 }
 
+/** Section block of the editor, now on the same clay surface as the rest of the app. */
 @Composable
 private fun EditorSection(title: String, content: @Composable () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Text(
-                text = title,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(10.dp))
-            content()
-        }
+    ClayCard(contentPadding = 16.dp) {
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(10.dp))
+        content()
     }
 }

@@ -56,6 +56,11 @@ import ir.hamghadam.app.data.ProfileColors
 import ir.hamghadam.app.data.ProfileEmojis
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.ui.components.Badge
+import ir.hamghadam.app.ui.components.SectionArt
+import ir.hamghadam.app.ui.components.SectionArtwork
+import ir.hamghadam.app.ui.components.lighten
+import ir.hamghadam.app.ui.components.darken
+import ir.hamghadam.app.ui.components.softShadow
 import ir.hamghadam.app.ui.components.HamghadamCard
 import ir.hamghadam.app.ui.components.IconTile
 import ir.hamghadam.app.ui.components.PillChip
@@ -133,13 +138,35 @@ fun ProfileScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .softShadow(radius = 26.dp, elevation = 16.dp)
                     .clip(CardRadius.card)
                     .background(
                         Brush.linearGradient(
-                            listOf(Color(active.colorArgb), MaterialTheme.colorScheme.primary),
+                            listOf(
+                                Color(active.colorArgb).lighten(0.16f),
+                                Color(active.colorArgb),
+                                MaterialTheme.colorScheme.primary.darken(0.06f),
+                            ),
                         ),
+                    )
+                    .border(
+                        1.dp,
+                        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.5f), Color.Transparent)),
+                        CardRadius.card,
                     ),
             ) {
+                // contrast scrim so the white copy stays above 4.5:1 on any accent
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(96.dp)
+                        .align(Alignment.CenterStart)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color.Black.copy(alpha = 0.22f), Color.Transparent),
+                            ),
+                        ),
+                )
                 Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         Modifier.size(58.dp).background(Color.White.copy(alpha = 0.24f), CircleShape),
@@ -166,7 +193,10 @@ fun ProfileScreen(
                             if (secureScreen) Badge("محافظت اسکرین‌شات", Color.White)
                         }
                     }
-                    Badge("آفلاین", Color.White)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        SectionArt(art = SectionArtwork.PROFILE, size = 54.dp)
+                        Badge("آفلاین", Color.White)
+                    }
                 }
             }
         }
