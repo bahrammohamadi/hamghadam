@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import ir.hamghadam.app.data.AppSettings
+import ir.hamghadam.app.data.BackupCipher
 import ir.hamghadam.app.data.EventCatalog
 import ir.hamghadam.app.data.ExternalEventEntity
 import ir.hamghadam.app.data.FocusSessionEntity
