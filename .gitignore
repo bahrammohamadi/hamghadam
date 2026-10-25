@@ -4,3 +4,8 @@
 hamghadam-source/assets-raw/
 hamghadam-source/assets-raw2/
 hamghadam-source/assets-cut2/
+
+# Local secrets for the optional server (never commit real values)
+.env
+.env.*
+!.env.example

@@ -184,6 +184,22 @@ for name, count in sorted(classes):
 PYSUM
 fi
 
+# ------------------------------------------------- سرور اختیاری: تست‌های Node
+# سرور آفلاین‌اول اختیاری است؛ اگر وجود داشت باید سبز باشد، ولی نبودش بیلد اپ را
+# نمی‌شکند (اپ هیچ وابستگی‌ای به خدمات شبکه ندارد).
+say "تست‌های API سرور اختیاری (Node)"
+API_DIR="$REPO_ROOT/hamghadam-source/services/api"
+if [ -f "$API_DIR/package.json" ]; then
+    if command -v node >/dev/null 2>&1; then
+        if ! ( cd "$API_DIR" && node --test test/*.test.js ) 2>&1 | tee -a "$LOG_FILE"; then
+            die_with_log "تست‌های Node سرور اختیاری شکست خوردند (مرحله: api-tests)"
+        fi
+    else
+        echo "::warning::Node در اجراکننده نصب نیست؛ تست‌های API اجرا نشدند"
+    fi
+fi
+cd "$PROJECT_DIR" || die "بازگشت به مسیر پروژهٔ اندروید ناموفق بود"
+
 # ---------------------------------------------------------------- Android Lint
 say "Android Lint (دروازهٔ خطاهای کشنده)"
 # abortOnError=false در build.gradle.kts است؛ خطاهای Fatal همچنان task را

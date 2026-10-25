@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Hamghadam API (starter contract)
-  version: 0.1.0
-  description: قرارداد اولیهٔ health و وظایف؛ احراز هویت و ذخیره‌سازی هنوز پیاده‌سازی نشده‌اند.
+  version: 0.2.0
+  description: قرارداد health و پیشنهاد ابزارهای دستیار. پیاده‌سازی در services/api (Node، بدون استقرار). اجرای ابزارها روی دستگاه انجام می‌شود، نه روی سرور.
 servers:
   - url: https://api.example.invalid/v1
 paths:
@@ -63,6 +63,26 @@ paths:
               schema: { $ref: '#/components/schemas/Task' }
         '409': { description: Idempotency or version conflict }
         '401': { description: Authentication required }
+  /agent:
+    post:
+      operationId: proposeAgentActions
+      description: احراز هویت با توکن Supabase؛ پاسخ فقط پیشنهاد است و اجرای ابزار روی دستگاه انجام می‌شود.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentRequest' }
+      responses:
+        '200':
+          description: Proposals
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentResponse' }
+        '401': { description: Authentication required }
+        '403': { description: Browser origin not allowed }
+        '429': { description: Rate limited }
+        '503': { description: Assistant not configured }
 components:
   securitySchemes:
     bearerAuth:
@@ -89,3 +109,53 @@ components:
         timezone: { type: string }
         version: { type: integer, minimum: 1 }
         deletedAt: { type: [string, 'null'], format: date-time }
+    AgentRequest:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message: { type: string, minLength: 1, maxLength: 4000 }
+        locale: { type: string, enum: [fa, en], default: fa }
+        tasks:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, title]
+            properties:
+              id: { type: string, maxLength: 64 }
+              title: { type: string, maxLength: 200 }
+              dueAt: { type: [string, 'null'], maxLength: 40 }
+              status: { type: string, maxLength: 24 }
+              starred: { type: boolean }
+    AgentAction:
+      type: object
+      required: [tool, args, sensitive, requiresConfirmation]
+      properties:
+        tool:
+          type: string
+          enum: [task.create, task.update, task.complete, task.delete, event.create, reminder.schedule, notification.schedule]
+        args: { type: object, additionalProperties: true }
+        sensitive: { type: boolean }
+        requiresConfirmation: { type: boolean }
+        droppedFields: { type: array, items: { type: string } }
+    AgentResponse:
+      type: object
+      required: [reply, actions, rejected, model]
+      properties:
+        reply: { type: string, maxLength: 2000 }
+        actions: { type: array, maxItems: 8, items: { $ref: '#/components/schemas/AgentAction' } }
+        rejected:
+          type: array
+          items:
+            type: object
+            required: [tool, reason]
+            properties:
+              tool: { type: string }
+              reason:
+                type: string
+                enum: [unknown_tool, invalid_arguments_json, missing_or_invalid_arguments]
+              fields: { type: array, items: { type: string } }
+        model: { type: string }
+        latencyMs: { type: integer, minimum: 0 }

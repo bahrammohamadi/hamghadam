@@ -56,7 +56,9 @@ hamghadam-source/
 ├─ docs/                             اسناد محصول، معماری، نقشهٔ صفحات و یادداشت پیاده‌سازی
 ├─ ci/                               workflow آمادهٔ ساخت APK + راهنما
 ├─ tools/generate-events.py          بازتولید فایل‌های مناسبت‌ها از فهرست منابع
-└─ services/api/openapi.yaml         قرارداد اولیهٔ API (فعلاً فقط قرارداد، بدون سرور)
+├─ services/api/                    سرورلس اختیاری (Vercel، Node، بدون وابستگی): health + پیشنهاد ابزارهای دستیار، ۲۱ تست
+├─ services/supabase/migrations/    اسکیمای Postgres + RLS برای سرور اختیاری (اجرا‌نشده)
+└─ services/api/openapi.yaml        قرارداد OpenAPI همان API
 ```
 
 معماری اپ: تک‌Activity + Compose، `AppViewModel` با `StateFlow`، Room به‌عنوان منبع حقیقت محلی، تزریق دستی وابستگی در `AppContainer`. لایهٔ `domain` هیچ وابستگی اندرویدی ندارد و روی JVM تست می‌شود.
@@ -82,9 +84,10 @@ hamghadam-source/
 ## گام‌های بعدی پیشنهادی
 
 1. اجرای workflow و رفع خطاهای احتمالی بیلد؛ سپس افزودن تست instrumented برای ثبت سریع و یادآور.
-2. لایهٔ همگام‌سازی: صف outbox پایدار + قرارداد `POST /v1/sync/operations` (اسکلت در `docs/02` طراحی شده).
-3. فایل مناسبت‌های ۱۴۰۶ (همان قالب JSON)، جست‌وجوی سراسری و زیرکار، و آزمون ویجت‌ها روی لانچرهای مختلف.
-4. آماده‌سازی انتشار: امضای AAB، سیاست حریم خصوصی، سنجش crash-free، دسترس‌پذیری (TalkBack/کنتراست).
+2. استقرار سرور اختیاری روی پروژهٔ آزمایشی Supabase/Vercel و آزمون RLS، سپس اتصال صفحهٔ «دستیار» در اپ (اسکلت در `docs/12`).
+3. لایهٔ همگام‌سازی: صف outbox پایدار + قرارداد `POST /v1/sync/operations` (اسکلت در `docs/02` طراحی شده).
+4. فایل مناسبت‌های ۱۴۰۶ (همان قالب JSON)، جست‌وجوی سراسری و زیرکار، و آزمون ویجت‌ها روی لانچرهای مختلف.
+5. آماده‌سازی انتشار: امضای AAB، سیاست حریم خصوصی، سنجش crash-free، دسترس‌پذیری (TalkBack/کنتراست).
 
 ## اسناد
 
@@ -97,6 +100,7 @@ hamghadam-source/
 - [`docs/07-competitors-20.fa.md`](docs/07-competitors-20.fa.md) — بررسی ۲۰ رقیب ایرانی و جهانی، ماتریس قابلیت و فهرست ۱۰ قابلیت افزوده‌شده
 - [`docs/09-3d-clay-design.fa.md`](docs/09-3d-clay-design.fa.md) — زبان طراحی سه‌بعدی خمیری، قواعد عمق/حرکت و هشت تصویر بخش‌ها
 - [`docs/11-audit-and-gap-matrix.fa.md`](docs/11-audit-and-gap-matrix.fa.md) — ممیزی نسخهٔ موجود، ماتریس شکاف ۱۶ حوزه (۲۸۱ الزام)، تصمیم‌های معماری و برنامهٔ مرحله‌ای بازسازی
+- [`docs/12-server-and-agent.fa.md`](docs/12-server-and-agent.fa.md) — سرور اختیاری (Supabase + Vercel)، قرارداد ابزارهای ایجنت، جریان پیش‌نمایش/تأیید/حسابرسی و مسیر استقرار
 - [`docs/10-crash-audit.fa.md`](docs/10-crash-audit.fa.md) — ممیزی کرش و پایداری طبق ISO/IEC 25010، MASVS-RESILIENCE و کیفیت اپ اندروید: یافته‌ها، اصلاح‌ها، آزمون‌ها و ریسک‌های باقی‌مانده
 - [`docs/08-security-and-testing.fa.md`](docs/08-security-and-testing.fa.md) — مدل تهدید، رمزگذاری SQLCipher، قالب پشتیبان `HGB1` و جزئیات آزمون‌های Robolectric/دسترس‌پذیری
 - [`docs/assets/icon-512.png`](docs/assets/icon-512.png) — آیکون ۵۱۲×۵۱۲ برای فهرست فروشگاه (همان طرح آیکون تطبیقی)

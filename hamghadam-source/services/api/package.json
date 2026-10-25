@@ -1,0 +1,13 @@
+{
+  "name": "@hamghadam/api",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional serverless API for Hamghadam: Supabase-authenticated agent proposals with server-side AI keys.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
