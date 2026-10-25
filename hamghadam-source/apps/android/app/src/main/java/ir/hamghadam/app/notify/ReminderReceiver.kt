@@ -29,6 +29,13 @@ import kotlinx.coroutines.launch
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        // Receivers run on the main thread and their exceptions kill the whole
+        // process with "app keeps stopping"; a failing reminder is never worth that.
+        runCatching { handle(context, intent) }
+            .onFailure { android.util.Log.e("ReminderReceiver", "reminder handling failed", it) }
+    }
+
+    private fun handle(context: Context, intent: Intent) {
         val taskId = intent.getStringExtra(EXTRA_TASK_ID) ?: return
         when (intent.action) {
             ACTION_DONE -> completeTask(context, taskId)
@@ -168,6 +175,8 @@ class ReminderReceiver : BroadcastReceiver() {
                 val task = repository.findTask(taskId)
                 if (task != null) repository.setCompleted(task, true)
                 NotificationManagerCompat.from(context).cancel(taskId.hashCode())
+            } catch (t: Throwable) {
+                android.util.Log.e("ReminderReceiver", "completing task failed", t)
             } finally {
                 pending.finish()
             }

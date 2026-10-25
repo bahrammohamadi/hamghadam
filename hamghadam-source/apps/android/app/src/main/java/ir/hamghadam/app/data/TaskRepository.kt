@@ -7,6 +7,7 @@ import ir.hamghadam.app.domain.RepeatRule
 import ir.hamghadam.app.domain.Tags
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -110,8 +111,11 @@ class TaskRepository(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T> scoped(source: Flow<List<T>>, profileOf: (T) -> String): Flow<List<T>> {
-        val store = profiles ?: return source
-        return store.activeId.flatMapLatest { id -> source.map { rows -> rows.filter { profileOf(it) == id } } }
+        // A database/decryption failure must degrade to an empty list, not kill
+        // the collector (which would close the app from inside Compose).
+        val safe = source.catch { emit(emptyList()) }
+        val store = profiles ?: return safe
+        return store.activeId.flatMapLatest { id -> safe.map { rows -> rows.filter { profileOf(it) == id } } }
     }
 
     fun observeTasks(): Flow<List<TaskEntity>> = scoped(taskDao.observeAll()) { it.profileId }
@@ -120,11 +124,13 @@ class TaskRepository(
 
     fun observeHabits(): Flow<List<HabitEntity>> = scoped(habitDao.observeHabits()) { it.profileId }
 
-    fun observeHabitLogs(): Flow<List<HabitLogEntity>> = habitDao.observeLogs()
+    fun observeHabitLogs(): Flow<List<HabitLogEntity>> =
+        habitDao.observeLogs().catch { emit(emptyList()) }
 
     fun observePersonalEvents(): Flow<List<PersonalEventEntity>> = scoped(eventDao.observeAll()) { it.profileId }
 
-    fun observeExternalEvents(): Flow<List<ExternalEventEntity>> = externalEventDao.observeAll()
+    fun observeExternalEvents(): Flow<List<ExternalEventEntity>> =
+        externalEventDao.observeAll().catch { emit(emptyList()) }
 
     fun observeFocusSessions(): Flow<List<FocusSessionEntity>> = scoped(focusDao.observeAll()) { it.profileId }
 

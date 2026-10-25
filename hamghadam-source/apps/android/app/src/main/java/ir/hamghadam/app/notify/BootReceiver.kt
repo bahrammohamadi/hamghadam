@@ -3,6 +3,7 @@ package ir.hamghadam.app.notify
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import ir.hamghadam.app.data.AppDatabase
 import ir.hamghadam.app.data.TaskRepository
 import kotlinx.coroutines.CoroutineScope
@@ -16,12 +17,15 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         val pending = goAsync()
-        val database = AppDatabase.get(context)
-        val repository = TaskRepository(database)
-        val scheduler = ReminderScheduler(context.applicationContext)
+        val appContext = context.applicationContext
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                scheduler.rescheduleAll(repository.loadTasksWithReminders())
+                // Opening the (SQLCipher) database is disk + KDF work: do it off
+                // the main thread, never inside onReceive.
+                val repository = TaskRepository(AppDatabase.get(appContext))
+                ReminderScheduler(appContext).rescheduleAll(repository.loadTasksWithReminders())
+            } catch (t: Throwable) {
+                Log.e("BootReceiver", "rescheduling reminders failed", t)
             } finally {
                 pending.finish()
             }

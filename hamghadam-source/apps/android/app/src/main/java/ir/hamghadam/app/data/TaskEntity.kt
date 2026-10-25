@@ -47,9 +47,13 @@ data class TaskEntity(
 
     val repeat: RepeatRule get() = RepeatRule.fromStorage(repeatRule)
 
-    val dueDate: JalaliDate? get() = dueEpochDay?.let { JalaliDate.fromEpochDay(it) }
+    // Stored values are validated on write, but backups from older builds and
+    // hand-edited files can carry anything; a bad row must never crash the list.
+    val dueDate: JalaliDate?
+        get() = dueEpochDay?.let { runCatching { JalaliDate.fromEpochDay(it) }.getOrNull() }
 
-    val dueTime: LocalTime? get() = dueMinuteOfDay?.let { LocalTime.of(it / 60, it % 60) }
+    val dueTime: LocalTime?
+        get() = dueMinuteOfDay?.takeIf { it in 0 until DAY_MINUTES }?.let { LocalTime.of(it / 60, it % 60) }
 
     val tagList: List<String> get() = ir.hamghadam.app.domain.Tags.parseCsv(tags)
 
@@ -61,6 +65,7 @@ data class TaskEntity(
         }
 
     companion object {
+        private const val DAY_MINUTES = 24 * 60
         const val PRIORITY_LOW = 0
         const val PRIORITY_NORMAL = 1
         const val PRIORITY_HIGH = 2

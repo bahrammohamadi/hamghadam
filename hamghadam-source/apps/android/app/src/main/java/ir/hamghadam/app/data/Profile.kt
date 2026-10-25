@@ -159,3 +159,21 @@ object ProfileCodec {
     fun cleanName(raw: String, fallback: String): String =
         raw.trim().take(MAX_NAME_LENGTH).ifBlank { fallback }
 }
+
+/**
+ * Decides which account owns the UI.
+ *
+ * The stored list intentionally does **not** contain the implicit first account
+ * (`DEFAULT_PROFILE_ID`, `""`), so on a fresh install — and after deleting the
+ * last extra account — `profiles` is empty. `profiles.first()` in that state
+ * throws `NoSuchElementException` and closes the app; this is the single,
+ * deterministic fallback used by every screen (see crash audit C-01).
+ */
+object ProfileResolver {
+
+    fun activeProfile(
+        profiles: List<LocalProfile>,
+        activeId: String,
+        fallback: LocalProfile,
+    ): LocalProfile = profiles.firstOrNull { it.id == activeId } ?: fallback
+}

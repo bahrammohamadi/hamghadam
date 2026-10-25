@@ -1,5 +1,6 @@
 package ir.hamghadam.app.ui
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,16 +45,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.hamghadam.app.CrashLog
 import ir.hamghadam.app.LockUiState
 import ir.hamghadam.app.data.AppSettings
 import ir.hamghadam.app.data.DEFAULT_PROFILE_ID
 import ir.hamghadam.app.data.LocalProfile
 import ir.hamghadam.app.data.ProfileColors
 import ir.hamghadam.app.data.ProfileEmojis
+import ir.hamghadam.app.data.ProfileResolver
 import ir.hamghadam.app.domain.PersianText
 import ir.hamghadam.app.ui.components.Badge
 import ir.hamghadam.app.ui.components.SectionArt
@@ -92,6 +96,8 @@ data class ProfileActions(
 fun ProfileScreen(
     profiles: List<LocalProfile>,
     activeId: String,
+    /** The implicit first account, shown even when no extra account exists. */
+    defaultProfile: LocalProfile,
     settings: AppSettings,
     lockState: LockUiState,
     lockAfterMinutes: Int,
@@ -99,7 +105,11 @@ fun ProfileScreen(
     actions: ProfileActions,
 ) {
     val digits = settings.persianDigits
-    val active = profiles.firstOrNull { it.id == activeId } ?: profiles.first()
+    val active = ProfileResolver.activeProfile(profiles, activeId, defaultProfile)
+    // Accounts shown to the user: the implicit first account plus the stored ones.
+    val accounts = remember(profiles, defaultProfile) {
+        listOf(defaultProfile) + profiles.filterNot { it.id == defaultProfile.id }
+    }
     var editing by remember { mutableStateOf<LocalProfile?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<LocalProfile?>(null) }
@@ -183,7 +193,7 @@ fun ProfileScreen(
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = "حساب فعال • ${PersianText.number(profiles.size, digits)} حساب روی این دستگاه",
+                            text = "حساب فعال • ${PersianText.number(accounts.size, digits)} حساب روی این دستگاه",
                             color = Color.White.copy(alpha = 0.85f),
                             fontSize = 11.sp,
                         )
@@ -205,7 +215,7 @@ fun ProfileScreen(
         item {
             SectionTitle(
                 title = "حساب‌ها",
-                count = profiles.size,
+                count = accounts.size,
                 persianDigits = digits,
                 action = {
                     TextButton(onClick = { showCreate = true }) { Text("+ حساب تازه", fontSize = 12.sp) }
@@ -214,12 +224,12 @@ fun ProfileScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (profile in profiles) {
+                for (profile in accounts) {
                     ProfileRow(
                         profile = profile,
                         active = profile.id == activeId,
                         onSwitch = { actions.onSwitch(profile.id) },
-                        onEdit = { editing = profile },
+                        onEdit = if (profile.id == DEFAULT_PROFILE_ID) null else ({ editing = profile }),
                         onDelete = if (profile.id == DEFAULT_PROFILE_ID) null else ({ deleting = profile }),
                     )
                 }
@@ -383,6 +393,50 @@ fun ProfileScreen(
                         shape = CardRadius.field,
                     ) { Text("بازیابی", fontSize = 12.sp) }
                 }
+                Spacer(Modifier.height(10.dp))
+                val diagnosticsContext = LocalContext.current
+                var crashReport by remember { mutableStateOf(CrashLog.exists(diagnosticsContext)) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "گزارش خطای اخیر",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            if (crashReport) {
+                                "فقط روی همین دستگاه ذخیره شده؛ متن کامل پیش از ارسال دیده می‌شود."
+                            } else {
+                                "اگر برنامه بسته شد، متن فنی خطا اینجا ذخیره می‌شود."
+                            },
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (crashReport) {
+                        TextButton(onClick = {
+                            val report = CrashLog.read(diagnosticsContext)
+                            val send = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "گزارش خطای هم‌قدم")
+                                putExtra(Intent.EXTRA_TEXT, report.orEmpty())
+                            }
+                            runCatching {
+                                diagnosticsContext.startActivity(
+                                    Intent.createChooser(send, "اشتراک گزارش خطا")
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            }
+                        }) { Text("ارسال", fontSize = 11.sp) }
+                        TextButton(onClick = {
+                            CrashLog.clear(diagnosticsContext)
+                            crashReport = false
+                        }) {
+                            Text("حذف", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 val status = ir.hamghadam.app.data.AppDatabase.cryptoStatus
                 val statusText = when (status) {
@@ -528,7 +582,7 @@ private fun ProfileRow(
     profile: LocalProfile,
     active: Boolean,
     onSwitch: () -> Unit,
-    onEdit: () -> Unit,
+    onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
     SoftCard(color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface) {
@@ -566,8 +620,10 @@ private fun ProfileRow(
             if (!active) {
                 TextButton(onClick = onSwitch) { Text("ورود", fontSize = 11.sp) }
             }
-            IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
-                Text("✎", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (onEdit != null) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
+                    Text("✎", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             if (onDelete != null) {
                 IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {

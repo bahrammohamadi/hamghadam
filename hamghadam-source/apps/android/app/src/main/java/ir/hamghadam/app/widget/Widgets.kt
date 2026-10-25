@@ -9,6 +9,7 @@ import android.content.Intent
 import android.widget.RemoteViews
 import ir.hamghadam.app.MainActivity
 import ir.hamghadam.app.R
+import android.util.Log
 import ir.hamghadam.app.data.AppDatabase
 import ir.hamghadam.app.data.ProfileStore
 import ir.hamghadam.app.data.SettingsStore
@@ -35,6 +36,8 @@ class TodayWidgetProvider : AppWidgetProvider() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 WidgetUpdater.refreshToday(appContext, manager, ids)
+            } catch (t: Throwable) {
+                Log.e("TodayWidget", "refresh failed", t)
             } finally {
                 pending.finish()
             }
@@ -42,25 +45,19 @@ class TodayWidgetProvider : AppWidgetProvider() {
     }
 
     /** Tapping the add button opens the app on the tasks tab. */
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == ACTION_ADD) {
-            context.startActivity(
-                Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra(MainActivity.EXTRA_ROUTE, MainActivity.ROUTE_QUICK_ADD)
-                },
-            )
-        }
-    }
-
     companion object {
-        const val ACTION_ADD = "ir.hamghadam.app.widget.ADD"
-
-        fun addPendingIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+        /**
+         * A direct `getActivity` intent. The old broadcast trampoline called
+         * `startActivity()` from `onReceive`, which Android 10+ silently blocks
+         * for background processes — the widget button looked dead.
+         */
+        fun addPendingIntent(context: Context): PendingIntent = PendingIntent.getActivity(
             context,
             7801,
-            Intent(context, TodayWidgetProvider::class.java).apply { action = ACTION_ADD },
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(MainActivity.EXTRA_ROUTE, MainActivity.ROUTE_QUICK_ADD)
+            },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
@@ -78,32 +75,23 @@ class FocusWidgetProvider : AppWidgetProvider() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 WidgetUpdater.refreshFocus(appContext, manager, ids)
+            } catch (t: Throwable) {
+                Log.e("FocusWidget", "refresh failed", t)
             } finally {
                 pending.finish()
             }
         }
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        when (intent.action) {
-            ACTION_START -> {
-                val launch = Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    putExtra(MainActivity.EXTRA_ROUTE, MainActivity.ROUTE_START_FOCUS)
-                }
-                context.startActivity(launch)
-            }
-        }
-    }
-
     companion object {
-        const val ACTION_START = "ir.hamghadam.app.widget.START_FOCUS"
-
-        fun startPendingIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+        /** Same fix as the «امروز» widget: launch the activity directly. */
+        fun startPendingIntent(context: Context): PendingIntent = PendingIntent.getActivity(
             context,
             7802,
-            Intent(context, FocusWidgetProvider::class.java).apply { action = ACTION_START },
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(MainActivity.EXTRA_ROUTE, MainActivity.ROUTE_START_FOCUS)
+            },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
@@ -118,12 +106,19 @@ object WidgetUpdater {
         val focusIds = manager.getAppWidgetIds(ComponentName(context, FocusWidgetProvider::class.java))
         if (todayIds.isEmpty() && focusIds.isEmpty()) return
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            if (todayIds.isNotEmpty()) refreshToday(context, manager, todayIds)
-            if (focusIds.isNotEmpty()) refreshFocus(context, manager, focusIds)
+            runCatching {
+                if (todayIds.isNotEmpty()) refreshToday(context, manager, todayIds)
+                if (focusIds.isNotEmpty()) refreshFocus(context, manager, focusIds)
+            }.onFailure { Log.e("WidgetUpdater", "refresh failed", it) }
         }
     }
 
     suspend fun refreshToday(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        runCatching { updateToday(context, manager, ids) }
+            .onFailure { Log.e("WidgetUpdater", "today widget failed", it) }
+    }
+
+    private suspend fun updateToday(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val digits = SettingsStore(context).settings.value.persianDigits
         val profileId = ProfileStore(context).activeId.value
         val today = JalaliDate.today()
@@ -177,6 +172,11 @@ object WidgetUpdater {
     }
 
     suspend fun refreshFocus(context: Context, manager: AppWidgetManager, ids: IntArray) {
+        runCatching { updateFocus(context, manager, ids) }
+            .onFailure { Log.e("WidgetUpdater", "focus widget failed", it) }
+    }
+
+    private suspend fun updateFocus(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val settings = SettingsStore(context).settings.value
         val digits = settings.persianDigits
         val profileId = ProfileStore(context).activeId.value

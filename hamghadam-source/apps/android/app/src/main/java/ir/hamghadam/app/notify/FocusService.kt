@@ -54,8 +54,17 @@ class FocusService : android.app.Service() {
         totalSeconds = intent?.getIntExtra(EXTRA_TOTAL, 0) ?: 0
         label = intent?.getStringExtra(EXTRA_LABEL).orEmpty()
         onBreak = intent?.getBooleanExtra(EXTRA_BREAK, false) ?: false
-        Notifications.ensureChannels(this)
-        startForeground(Notifications.ID_FOCUS, build(remainingSeconds()))
+        runCatching { Notifications.ensureChannels(this) }
+        // Android 12+ can refuse a foreground start after the app went to the
+        // background; Android 14 throws for a missing service type. Either way
+        // the service must stop quietly instead of taking the process down.
+        val foreground = runCatching {
+            startForeground(Notifications.ID_FOCUS, build(remainingSeconds()))
+        }.isSuccess
+        if (!foreground) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         handler.removeCallbacks(ticker)
         handler.post(ticker)
         return START_NOT_STICKY

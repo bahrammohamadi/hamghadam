@@ -41,15 +41,20 @@ class HamghadamApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Install first: from here on even a startup failure leaves a local
+        // stack trace the user can share from the account screen.
+        CrashLog.install(this)
         container = AppContainer(this)
         // The encrypted database has been opened by now; drop the plaintext copy.
-        DatabaseCrypto.cleanupPlaintextBackup(this)
-        Notifications.removeLegacyChannels(this)
-        Notifications.ensureChannels(this)
+        runCatching { DatabaseCrypto.cleanupPlaintextBackup(this) }
+        runCatching { Notifications.removeLegacyChannels(this) }
+        runCatching { Notifications.ensureChannels(this) }
         // Only schedule the optional sync when the user already connected a calendar.
-        val settings = container.settings.settings.value
-        if (settings.googleConnected && settings.googleClientId.isNotBlank()) {
-            runCatching { GoogleSyncScheduler.schedule(this) }
+        runCatching {
+            val settings = container.settings.settings.value
+            if (settings.googleConnected && settings.googleClientId.isNotBlank()) {
+                GoogleSyncScheduler.schedule(this)
+            }
         }
     }
 

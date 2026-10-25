@@ -56,6 +56,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+/** A backup bigger than this is almost certainly not ours; refuse early. */
+private const val MAX_BACKUP_BYTES = 32L * 1024 * 1024
+
 /** Editable copy of a task used by the editor screen. */
 data class TaskDraft(
     val id: String? = null,
@@ -153,6 +156,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val activeProfileId: StateFlow<String> = profilesStore.activeId
 
+    /** The implicit first account; never part of [profiles] (see [ProfileResolver]). */
+    val defaultProfile: LocalProfile = profilesStore.defaultProfile
+
     val tasks: StateFlow<List<TaskEntity>> = repository.observeTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -194,6 +200,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events: Flow<UiEvent> = _events.receiveAsFlow()
 
+    /**
+     * Catches every exception that escapes a UI action (disk full, database
+     * locked, revoked document permission, ...). Without it the exception
+     * reaches the thread's default handler and the process is killed — the
+     * "it closes by itself" class of crashes (audit item C-02).
+     */
+    private val actionErrors = kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+        android.util.Log.e("AppViewModel", "action failed", error)
+        _events.trySend(UiEvent.Message("انجام نشد؛ دوباره تلاش کن"))
+    }
+
     private val _lock = MutableStateFlow(
         LockUiState(
             enabled = security.isPinSet,
@@ -216,7 +233,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         // Alarms can be lost (reboot, app update, force stop): rebuild them once.
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             runCatching { reminders.rescheduleAll(repository.loadTasksWithReminders()) }
             runCatching { repository.ensureTemplatesSeeded() }
             refreshFocusToday()
@@ -226,7 +243,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         // Keep the home-screen widgets in step with the data without hammering
         // the launcher: debounce bursts of edits into a single refresh.
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             tasks.collectLatest {
                 delay(1200)
                 WidgetUpdater.refreshAll(getApplication<Application>())
@@ -247,7 +264,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val dueDate = parsed.date ?: if (parsed.time != null) today else null
         val minuteOfDay = parsed.time?.let { it.hour * 60 + it.minute }
         val reminder = if (dueDate != null) settingsStore.settings.value.defaultReminderMinutes else null
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val task = repository.createTask(
                 title = title,
                 dueDate = dueDate,
@@ -285,7 +302,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun saveDraft(draft: TaskDraft) {
         val title = draft.title.trim()
         if (title.isEmpty()) return
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val existing = draft.id?.let { repository.findTask(it) }
             if (existing == null) {
                 val created = repository.createTask(
@@ -325,7 +342,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleTask(task: TaskEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             reminders.cancel(task.id)
             val followUp = repository.setCompleted(task, !task.isCompleted)
             if (!task.isCompleted) {
@@ -341,7 +358,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteTask(task: TaskEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             reminders.cancel(task.id)
             repository.deleteTask(task.id)
             _events.send(UiEvent.TaskDeleted(task.id, task.title))
@@ -350,7 +367,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteDraft(draft: TaskDraft) {
         val id = draft.id ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             reminders.cancel(id)
             repository.deleteTask(id)
             _events.send(UiEvent.TaskDeleted(id, draft.title))
@@ -358,7 +375,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun undoDelete(taskId: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.restoreTask(taskId)
             repository.findTask(taskId)?.let { reminders.schedule(it) }
             _events.send(UiEvent.Message("کار بازگردانده شد"))
@@ -368,7 +385,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // ------------------------------------------------------------ projects
 
     fun createProject(name: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             if (repository.createProject(name) != null) {
                 _events.send(UiEvent.Message("لیست تازه ساخته شد"))
             }
@@ -376,40 +393,40 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteProject(id: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.deleteProject(id)
             _events.send(UiEvent.Message("لیست حذف شد؛ کارهای آن بدون لیست شدند"))
         }
     }
 
     fun setProjectColor(project: ProjectEntity, colorArgb: Int) {
-        viewModelScope.launch { repository.updateProjectColor(project, colorArgb) }
+        viewModelScope.launch(actionErrors) { repository.updateProjectColor(project, colorArgb) }
     }
 
     // -------------------------------------------------------------- habits
 
     fun createHabit(name: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             if (repository.createHabit(name) != null) _events.send(UiEvent.Message("عادت تازه ساخته شد"))
         }
     }
 
     fun deleteHabit(id: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.deleteHabit(id)
             _events.send(UiEvent.Message("عادت حذف شد"))
         }
     }
 
     fun toggleHabitDay(habitId: String, date: JalaliDate, done: Boolean) {
-        viewModelScope.launch { repository.setHabitDone(habitId, date.toEpochDay(), done) }
+        viewModelScope.launch(actionErrors) { repository.setHabitDone(habitId, date.toEpochDay(), done) }
     }
 
     // -------------------------------------------------------------- events
 
     fun saveEvent(draft: EventDraft) {
         if (draft.title.isBlank()) return
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val saved = repository.savePersonalEvent(
                 id = draft.id,
                 title = draft.title,
@@ -425,7 +442,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteEvent(id: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.deletePersonalEvent(id)
             _events.send(UiEvent.Message("رویداد حذف شد"))
         }
@@ -438,7 +455,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // ----------------------------------------------------------- templates
 
     fun applyTemplate(template: TemplateEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val created = repository.createTask(
                 title = template.title,
                 notes = template.notes,
@@ -457,7 +474,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun createTemplate(name: String, title: String, notes: String, priority: Int, tags: String, minuteOfDay: Int?) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             if (repository.createTemplate(name, title, notes, priority, minuteOfDay, tags) != null) {
                 _events.send(UiEvent.Message("تمپلیت ذخیره شد"))
             }
@@ -467,7 +484,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun saveDraftAsTemplate(draft: TaskDraft) {
         val title = draft.title.trim()
         if (title.isEmpty()) return
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.createTemplate(
                 name = title,
                 title = title,
@@ -482,7 +499,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteTemplate(id: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.deleteTemplate(id)
             _events.send(UiEvent.Message("تمپلیت حذف شد"))
         }
@@ -525,7 +542,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun launchTimer() {
         focusJob?.cancel()
-        focusJob = viewModelScope.launch {
+        focusJob = viewModelScope.launch(actionErrors) {
             while (isActive) {
                 val remaining = ((focusEndsAtMillis - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(0)
                 _focusTimer.update { it.copy(remainingSeconds = remaining) }
@@ -603,7 +620,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun recordFocus(seconds: Int, completed: Boolean) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val state = _focusTimer.value
             val record = FocusRecord(
                 id = UUID.randomUUID().toString(),
@@ -620,7 +637,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun refreshFocusToday() {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val today = repository.epochDayOf(System.currentTimeMillis())
             val (sessions, minutes) = repository.focusDay(today)
             _focusTimer.update { it.copy(completedToday = sessions, minutesToday = minutes) }
@@ -670,7 +687,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (_google.value.busy) return
         _google.update { it.copy(busy = true, error = "", statusMessage = "در حال باز کردن صفحهٔ ورود گوگل…") }
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val port = withContext(Dispatchers.IO) { GoogleOAuth.freePort() }
             val verifier = GoogleOAuth.codeVerifier()
             val state = UUID.randomUUID().toString()
@@ -715,7 +732,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun disconnectGoogle() {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             tokens.clear()
             settingsStore.setGoogleConnected(false)
             GoogleSyncScheduler.cancel(getApplication<Application>())
@@ -741,7 +758,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         _google.update { it.copy(busy = true, error = "", statusMessage = "در حال همگام‌سازی…") }
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val outcome = runCatching {
                 withContext(Dispatchers.IO) {
                     val token = tokens.validAccessToken(clientId) ?: throw IllegalStateException("دسترسی منقضی شده؛ دوباره وصل شو")
@@ -779,7 +796,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun refreshGoogleStatus() {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val count = runCatching { repository.externalEventsAsCalendar().size }.getOrDefault(0)
             _google.update {
                 it.copy(
@@ -806,7 +823,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun setDefaultReminder(minutes: Int?) = settingsStore.setDefaultReminder(minutes)
 
     fun rescheduleReminders() {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             runCatching {
                 reminders.rescheduleAll(repository.loadTasksWithReminders())
                 _events.send(UiEvent.Message("یادآورها دوباره زمان‌بندی شدند"))
@@ -824,7 +841,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
      * unencrypted backup keeps working exactly like 0.4.0.
      */
     fun exportBackup(uri: Uri, password: String? = null) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             runCatching {
                 withContext(Dispatchers.IO) {
                     val json = repository.exportBackup()
@@ -850,12 +867,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun importBackup(uri: Uri, password: String? = null) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val message = runCatching {
                 withContext(Dispatchers.IO) {
                     val resolver = getApplication<Application>().contentResolver
-                    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+                    val stream = resolver.openInputStream(uri)
                         ?: throw IllegalStateException("خواندن فایل ممکن نشد")
+                    val bytes = stream.use { input ->
+                        val buffer = java.io.ByteArrayOutputStream()
+                        val chunk = ByteArray(64 * 1024)
+                        var total = 0L
+                        while (true) {
+                            val read = input.read(chunk)
+                            if (read < 0) break
+                            total += read
+                            if (total > MAX_BACKUP_BYTES) {
+                                throw IllegalStateException("فایل پشتیبان بزرگ‌تر از ۳۲ مگابایت است")
+                            }
+                            buffer.write(chunk, 0, read)
+                        }
+                        buffer.toByteArray()
+                    }
                     // Plain JSON (0.4.0 backups) and encrypted envelopes both open here.
                     val text = BackupCipher.open(bytes, password)
                     repository.importBackup(text)
@@ -880,12 +912,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun createProfile(name: String, emoji: String, colorArgb: Int) {
         val profile = profilesStore.create(name, emoji, colorArgb)
         switchProfile(profile.id)
-        viewModelScope.launch { _events.send(UiEvent.Message("حساب «${profile.name}» ساخته شد")) }
+        viewModelScope.launch(actionErrors) { _events.send(UiEvent.Message("حساب «${profile.name}» ساخته شد")) }
     }
 
     fun updateProfile(profile: LocalProfile, name: String, emoji: String, colorArgb: Int) {
         profilesStore.update(profile.id, name, emoji, colorArgb)
-        viewModelScope.launch { _events.send(UiEvent.Message("حساب به‌روز شد")) }
+        viewModelScope.launch(actionErrors) { _events.send(UiEvent.Message("حساب به‌روز شد")) }
     }
 
     fun switchProfile(id: String) {
@@ -894,12 +926,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         profilesStore.setActive(id)
         refreshFocusToday()
         val name = profilesStore.active.name
-        viewModelScope.launch { _events.send(UiEvent.Message("حساب فعال: $name")) }
+        viewModelScope.launch(actionErrors) { _events.send(UiEvent.Message("حساب فعال: $name")) }
     }
 
     fun deleteProfile(profile: LocalProfile) {
         if (profile.id == DEFAULT_PROFILE_ID) return
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             runCatching { repository.deleteProfileData(profile.id) }
             profilesStore.remove(profile.id)
             refreshFocusToday()
@@ -920,7 +952,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         security.setPin(pin)
         security.resetFailures()
         _lock.value = LockUiState(enabled = true, locked = false)
-        viewModelScope.launch { _events.send(UiEvent.Message("قفل ورود فعال شد")) }
+        viewModelScope.launch(actionErrors) { _events.send(UiEvent.Message("قفل ورود فعال شد")) }
         return true
     }
 
@@ -933,7 +965,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         security.clearPin()
         _lock.value = LockUiState(enabled = false, locked = false)
-        viewModelScope.launch { _events.send(UiEvent.Message("قفل ورود خاموش شد")) }
+        viewModelScope.launch(actionErrors) { _events.send(UiEvent.Message("قفل ورود خاموش شد")) }
         return true
     }
 
@@ -943,7 +975,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _lock.update { it.copy(blockedSeconds = blocked, error = "کمی صبر کن") }
             return
         }
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val ok = withContext(Dispatchers.Default) { security.verify(pin) }
             if (ok) {
                 security.resetFailures()
@@ -998,7 +1030,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // ---------------------------------------------------------- task extras
 
     fun duplicateTask(task: TaskEntity) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             val copy = repository.duplicateTask(task)
             if (copy != null) {
                 reminders.schedule(copy)
@@ -1008,14 +1040,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun moveTask(task: TaskEntity, projectId: String?) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.updateTask(task.copy(projectId = projectId))
             _events.send(UiEvent.Message(if (projectId == null) "از لیست خارج شد" else "به لیست منتقل شد"))
         }
     }
 
     fun setTaskPriority(task: TaskEntity, priority: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(actionErrors) {
             repository.updateTask(task.copy(priority = priority))
             _events.send(UiEvent.Message("اهمیت به‌روز شد"))
         }

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import ir.hamghadam.app.data.TaskEntity
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.PersianCalendar
@@ -21,10 +22,20 @@ import java.time.ZoneId
  */
 class ReminderScheduler(private val context: Context) {
 
-    private val alarmManager: AlarmManager =
-        context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    private val alarmManager: AlarmManager? =
+        context.getSystemService(AlarmManager::class.java)
 
+    /**
+     * Never throws: an alarm that cannot be scheduled is logged and the task
+     * still works when the app is opened. Before the audit a `SecurityException`
+     * from an OEM alarm policy could close the app right after saving a task.
+     */
     fun schedule(task: TaskEntity) {
+        runCatching { scheduleOrThrow(task) }
+            .onFailure { Log.w(TAG, "reminder not scheduled for ${task.id}", it) }
+    }
+
+    private fun scheduleOrThrow(task: TaskEntity) {
         cancel(task.id)
         val dueDate = task.dueDate ?: return
         val offset = task.reminderMinutesBefore ?: return
@@ -33,16 +44,23 @@ class ReminderScheduler(private val context: Context) {
         val triggerAt = triggerMillis(dueDate.toGregorian(), minuteOfDay, offset) ?: return
         if (triggerAt <= System.currentTimeMillis()) return
 
+        val manager = alarmManager ?: return
         val pendingIntent = buildPendingIntent(task.id, task.title, dueLabel(task))
-        if (canUseExactAlarms()) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-        } else {
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+        val exact = runCatching {
+            if (canUseExactAlarms()) {
+                manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            } else {
+                manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+            }
+        }.isSuccess
+        if (!exact) {
+            // Last resort (e.g. exact alarms revoked between check and call).
+            runCatching { manager.set(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent) }
         }
     }
 
     fun cancel(taskId: String) {
-        alarmManager.cancel(buildPendingIntent(taskId, "", ""))
+        runCatching { alarmManager?.cancel(buildPendingIntent(taskId, "", "")) }
     }
 
     fun rescheduleAll(tasks: List<TaskEntity>) {
@@ -60,7 +78,7 @@ class ReminderScheduler(private val context: Context) {
 
     private fun canUseExactAlarms(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            runCatching { alarmManager.canScheduleExactAlarms() }.getOrDefault(false)
+            runCatching { alarmManager?.canScheduleExactAlarms() == true }.getOrDefault(false)
         } else {
             true
         }
@@ -84,6 +102,7 @@ class ReminderScheduler(private val context: Context) {
     }
 
     private companion object {
+        const val TAG = "ReminderScheduler"
         const val DEFAULT_ALL_DAY_MINUTE = 9 * 60
     }
 }

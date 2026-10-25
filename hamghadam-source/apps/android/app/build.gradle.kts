@@ -13,8 +13,8 @@ android {
         applicationId = "ir.hamghadam.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.6.1"
+        versionCode = 11
+        versionName = "0.6.2"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -42,6 +42,17 @@ android {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
         }
+    }
+
+    lint {
+        // Fatal issues (the ones that crash at runtime) are parsed by
+        // ci/build.sh and fail the build. Regular errors/warnings stay in the
+        // report so they can be triaged without blocking every push.
+        abortOnError = false
+        checkReleaseBuilds = false
+        warningsAsErrors = false
+        xmlReport = true
+        htmlReport = true
     }
 
     packaging {

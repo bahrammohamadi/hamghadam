@@ -69,6 +69,7 @@ import ir.hamghadam.app.EventDraft
 import ir.hamghadam.app.LockUiState
 import ir.hamghadam.app.TaskDraft
 import ir.hamghadam.app.UiEvent
+import ir.hamghadam.app.data.ProfileResolver
 import ir.hamghadam.app.data.ThemeMode
 import ir.hamghadam.app.domain.EventProjection
 import ir.hamghadam.app.domain.JalaliDate
@@ -129,6 +130,8 @@ fun AppRoot(
     val lockState by viewModel.lock.collectAsStateWithLifecycle()
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
+    // Never `profiles.first()`: that list is empty for the implicit first account.
+    val activeProfile = ProfileResolver.activeProfile(profiles, activeProfileId, viewModel.defaultProfile)
 
     val darkTheme = when (settings.themeMode) {
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -152,7 +155,6 @@ fun AppRoot(
     ) {
         HamghadamTheme(darkTheme = darkTheme, accent = settings.accent) {
             if (lockState.locked) {
-                val activeProfile = profiles.firstOrNull { it.id == activeProfileId } ?: profiles.first()
                 LockScreen(
                     state = lockState,
                     profile = activeProfile,
@@ -332,6 +334,7 @@ fun AppRoot(
                         MoreRoute.PROFILE -> ProfileScreen(
                             profiles = profiles,
                             activeId = activeProfileId,
+                            defaultProfile = viewModel.defaultProfile,
                             settings = settings,
                             lockState = lockState,
                             lockAfterMinutes = viewModel.lockTimeoutMinutes,
@@ -437,7 +440,7 @@ fun AppRoot(
 
                                 AppTab.MORE -> MoreScreen(
                                     settings = settings,
-                                    profile = profiles.firstOrNull { it.id == activeProfileId } ?: profiles.first(),
+                                    profile = activeProfile,
                                     profileCount = profiles.size,
                                     openTasks = tasks.count { !it.isCompleted },
                                     eventCount = personalEvents.size + googleEvents.size,

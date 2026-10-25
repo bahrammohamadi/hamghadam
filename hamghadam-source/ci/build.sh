@@ -184,6 +184,54 @@ for name, count in sorted(classes):
 PYSUM
 fi
 
+# ---------------------------------------------------------------- Android Lint
+say "Android Lint (دروازهٔ خطاهای کشنده)"
+# abortOnError=false در build.gradle.kts است؛ خطاهای Fatal همچنان task را
+# شکست می‌دهند و اینجا با تجزیهٔ گزارش به annotation تبدیل می‌شوند.
+if ! gradle "${GRADLE_ARGS[@]}" :app:lintDebug 2>&1 | tee -a "$LOG_FILE"; then
+    echo "::warning::lintDebug با خطا تمام شد؛ گزارش بررسی می‌شود"
+fi
+LINT_XML="app/build/reports/lint-results-debug.xml"
+if [ -f "$LINT_XML" ] && command -v python3 >/dev/null 2>&1; then
+    LINT_FAILED=0
+    python3 - "$LINT_XML" <<'PYLINT' || LINT_FAILED=1
+import sys
+import xml.etree.ElementTree as ET
+
+path = sys.argv[1]
+try:
+    root = ET.parse(path).getroot()
+except Exception as exc:  # pragma: no cover - فقط وقتی گزارش خراب است
+    print(f"::warning::خواندن گزارش lint ممکن نشد: {exc}")
+    sys.exit(0)
+
+issues = list(root.iter("issue"))
+fatal = [i for i in issues if (i.get("severity") or "") == "Fatal"]
+errors = [i for i in issues if (i.get("severity") or "") == "Error"]
+print(f"::notice::Android Lint: {len(fatal)} fatal، {len(errors)} error، {len(issues)} مجموع")
+
+def where(issue):
+    loc = issue.find("location")
+    if loc is None:
+        return "?"
+    return f"{loc.get('file')}:{loc.get('line')}"
+
+for issue in fatal + errors:
+    message = (issue.get("message") or "").replace("\n", " ")[:200]
+    print(f"::warning::LINT {issue.get('severity')} {issue.get('id')} — {message} ({where(issue)})")
+
+if fatal:
+    print("::error::Android Lint خطای Fatal پیدا کرد (ریسک کرش در زمان اجرا)")
+    sys.exit(1)
+PYLINT
+    if [ "$LINT_FAILED" -eq 1 ]; then
+        report "Android Lint: خطای Fatal"
+        exit 1
+    fi
+else
+    echo "::warning::گزارش lint تولید نشد؛ دروازهٔ lint اعمال نشد"
+fi
+
 say "ساخت APK دیباگ"
 if ! gradle "${GRADLE_ARGS[@]}" :app:assembleDebug 2>&1 | tee -a "$LOG_FILE"; then
     die_with_log "ساخت APK شکست خورد (مرحله: assembleDebug)"

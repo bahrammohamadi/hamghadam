@@ -3,6 +3,7 @@ package ir.hamghadam.app.notify
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 
@@ -63,7 +64,10 @@ object Notifications {
                 .setShowBadge(true)
                 .build(),
         )
-        manager.createNotificationChannelsCompat(channels)
+        // Called from Application.onCreate; a broken channel (OEM policy, user
+        // restriction) must never prevent the app from opening.
+        runCatching { manager.createNotificationChannelsCompat(channels) }
+            .onFailure { Log.w("Notifications", "creating channels failed", it) }
     }
 
     /** Old single channel from 0.3.0; removed so users do not see duplicates. */
