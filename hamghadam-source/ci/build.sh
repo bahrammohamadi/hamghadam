@@ -167,7 +167,7 @@ APK="app/build/outputs/apk/debug/app-debug.apk"
 [ -f "$APK" ] || die "فایل APK ساخته نشد: $APK"
 ls -lh "$APK" || true
 APK_SIZE=$(wc -c < "$APK" | tr -d ' ')
-APK_SHA=$( (command -v sha256sum >/dev/null 2>&1 && sha256sum "$APK") || (command -v shasum >/dev/null 2>&1 && shasum -a 256 "$APK") | cut -d' ' -f1 )
+APK_SHA=$( { (command -v sha256sum >/dev/null 2>&1 && sha256sum "$APK") || (command -v shasum >/dev/null 2>&1 && shasum -a 256 "$APK"); } | cut -d' ' -f1 )
 APK_SHA="${APK_SHA:-unknown}"
 notice "APK sha256=${APK_SHA}"
 say "بررسی محتوای APK"
