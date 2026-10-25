@@ -203,7 +203,7 @@ private fun MoreRow(
 @Composable
 fun SimpleHeader(title: String, onBack: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CircleIconButton(contentDescription = "بازگشت", onClick = onBack) {
