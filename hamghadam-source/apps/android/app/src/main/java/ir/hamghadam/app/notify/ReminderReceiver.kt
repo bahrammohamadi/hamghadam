@@ -87,7 +87,7 @@ class ReminderReceiver : BroadcastReceiver() {
     private fun completeTask(context: Context, taskId: String) {
         val pending = goAsync()
         val database = AppDatabase.get(context)
-        val repository = TaskRepository(database.taskDao(), database.projectDao(), database.habitDao())
+        val repository = TaskRepository(database)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val task = repository.findTask(taskId)

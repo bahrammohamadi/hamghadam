@@ -85,6 +85,17 @@ class TaskRepository(
     private val now: () -> Long = { System.currentTimeMillis() },
 ) {
 
+    /** Convenience constructor used by receivers that only have the database. */
+    constructor(database: AppDatabase) : this(
+        taskDao = database.taskDao(),
+        projectDao = database.projectDao(),
+        habitDao = database.habitDao(),
+        eventDao = database.personalEventDao(),
+        externalEventDao = database.externalEventDao(),
+        focusDao = database.focusSessionDao(),
+        templateDao = database.templateDao(),
+    )
+
     fun observeTasks(): Flow<List<TaskEntity>> = taskDao.observeAll()
 
     fun observeProjects(): Flow<List<ProjectEntity>> = projectDao.observeAll()

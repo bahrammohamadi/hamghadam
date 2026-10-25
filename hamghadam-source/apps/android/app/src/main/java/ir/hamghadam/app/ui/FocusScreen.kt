@@ -137,7 +137,8 @@ fun FocusScreen(
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    if (timer.taskTitle != null) {
+                    val taskTitle = timer.taskTitle
+                    if (taskTitle != null) {
                         Row(
                             modifier = Modifier
                                 .background(Color.White.copy(alpha = 0.7f), CardRadius.chip)
@@ -145,7 +146,7 @@ fun FocusScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = "🎯 " + timer.taskTitle,
+                                text = "🎯 " + taskTitle,
                                 fontSize = 11.sp,
                                 color = HamghadamPalette.VioletDeep,
                                 maxLines = 1,

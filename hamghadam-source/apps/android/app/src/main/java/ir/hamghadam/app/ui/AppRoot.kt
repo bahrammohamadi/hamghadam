@@ -45,6 +45,7 @@ import ir.hamghadam.app.AppViewModel
 import ir.hamghadam.app.EventDraft
 import ir.hamghadam.app.TaskDraft
 import ir.hamghadam.app.UiEvent
+import ir.hamghadam.app.toDraft
 import ir.hamghadam.app.data.ThemeMode
 import ir.hamghadam.app.domain.JalaliDate
 import ir.hamghadam.app.domain.Tags
@@ -277,7 +278,7 @@ fun AppRoot(viewModel: AppViewModel) {
                                 focusTimer = focusTimer,
                                 onToggle = viewModel::toggleTask,
                                 onDelete = viewModel::deleteTask,
-                                onEdit = { activeDraft = ir.hamghadam.app.toDraft(it) },
+                                onEdit = { activeDraft = it.toDraft() },
                                 onQuickAdd = viewModel::quickAdd,
                                 onOpenSettings = { moreRoute = MoreRoute.SETTINGS },
                                 onOpenFocus = { tabName = AppTab.FOCUS.name },
@@ -294,7 +295,7 @@ fun AppRoot(viewModel: AppViewModel) {
                                 settings = settings,
                                 onToggle = viewModel::toggleTask,
                                 onDelete = viewModel::deleteTask,
-                                onEdit = { activeDraft = ir.hamghadam.app.toDraft(it) },
+                                onEdit = { activeDraft = it.toDraft() },
                             )
 
                             AppTab.CALENDAR -> CalendarScreen(
@@ -306,7 +307,7 @@ fun AppRoot(viewModel: AppViewModel) {
                                 googleEvents = googleEvents,
                                 onToggle = viewModel::toggleTask,
                                 onDelete = viewModel::deleteTask,
-                                onEdit = { activeDraft = ir.hamghadam.app.toDraft(it) },
+                                onEdit = { activeDraft = it.toDraft() },
                                 onAddForDay = { day -> activeDraft = TaskDraft(dueDate = day) },
                                 onSaveEvent = { draft: EventDraft -> viewModel.saveEvent(draft) },
                                 onDeleteEvent = viewModel::deleteEvent,

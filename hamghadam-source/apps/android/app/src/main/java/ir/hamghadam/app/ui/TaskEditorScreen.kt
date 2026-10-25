@@ -250,7 +250,7 @@ fun TaskEditorScreen(
             EditorSection(title = "برچسب‌ها") {
                 OutlinedTextField(
                     value = draft.tags,
-                    onValueChange = { draft = draft.copy(tags = Tags.toCsv(Tags.parseCsv(it))) },
+                    onValueChange = { draft = draft.copy(tags = it) },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("مثلاً کار, خرید — با کاما جدا کن", fontSize = 12.sp) },
                     singleLine = true,
@@ -262,11 +262,11 @@ fun TaskEditorScreen(
                         for (tag in knownTags.take(5)) {
                             PillChip(
                                 text = Tags.display(tag),
-                                selected = draft.tags.contains(tag),
+                                selected = Tags.parseCsv(draft.tags).contains(tag),
                                 tint = ir.hamghadam.app.ui.theme.HamghadamPalette.Olive,
                                 onClick = {
                                     draft = draft.copy(
-                                        tags = if (draft.tags.contains(tag)) {
+                                        tags = if (Tags.parseCsv(draft.tags).contains(tag)) {
                                             Tags.remove(draft.tags, tag)
                                         } else {
                                             Tags.add(draft.tags, tag)

@@ -17,7 +17,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         val pending = goAsync()
         val database = AppDatabase.get(context)
-        val repository = TaskRepository(database.taskDao(), database.projectDao(), database.habitDao())
+        val repository = TaskRepository(database)
         val scheduler = ReminderScheduler(context.applicationContext)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
