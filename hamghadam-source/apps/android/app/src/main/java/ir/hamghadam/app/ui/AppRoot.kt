@@ -174,7 +174,8 @@ fun AppRoot(
                         onRouteHandled()
                     }
                     "start_focus" -> {
-                        tabName = AppTab.FOCUS.name
+                        tabName = AppTab.MORE.name
+                        moreRoute = MoreRoute.FOCUS
                         viewModel.startFocus()
                         onRouteHandled()
                     }

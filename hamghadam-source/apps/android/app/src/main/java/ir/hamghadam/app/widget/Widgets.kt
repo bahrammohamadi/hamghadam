@@ -125,7 +125,7 @@ object WidgetUpdater {
 
     suspend fun refreshToday(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val digits = SettingsStore(context).settings.value.persianDigits
-        val profileId = ProfileStore(context).activeId
+        val profileId = ProfileStore(context).activeId.value
         val today = JalaliDate.today()
         val database = AppDatabase.get(context)
         val tasks = runCatching { database.taskDao().loadAll() }.getOrDefault(emptyList())
@@ -179,7 +179,7 @@ object WidgetUpdater {
     suspend fun refreshFocus(context: Context, manager: AppWidgetManager, ids: IntArray) {
         val settings = SettingsStore(context).settings.value
         val digits = settings.persianDigits
-        val profileId = ProfileStore(context).activeId
+        val profileId = ProfileStore(context).activeId.value
         val today = JalaliDate.today().toEpochDay()
         val database = AppDatabase.get(context)
         val sessions = runCatching { database.focusSessionDao().loadAll() }.getOrDefault(emptyList())
