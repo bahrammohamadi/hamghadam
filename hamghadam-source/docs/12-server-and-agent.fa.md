@@ -171,9 +171,11 @@ curl -s https://<deployment>/api/health
 | پوشهٔ ریشه | `hamghadam-source/services/api` |
 | Framework | `node` (به‌دلیل الزام API ورسل؛ توضیح زیر) |
 | منطقهٔ اجرا | `fra1` (فرانکفورت) در `vercel.json` |
-| استقرار | `dpl_Gqk9XLJ3PVfPwYYjFATjLUuDQU65` روی commit `4264ea4` — **READY / PROMOTED** |
+| استقرار (جاری) | `dpl_C6ebHg15v7kp9PBwnyaU6B3Haccz` روی commit `81a149c` — **READY / PROMOTED**، منطقهٔ `fra1` |
+| استقرار پیشین | `dpl_Gqk9XLJ3PVfPwYYjFATjLUuDQU65` روی commit `4264ea4` (منطقهٔ `iad1`) |
 | آدرس | https://hamghadam-api-git.vercel.app |
-| آزمون دودی | `GET /api/health` → `{"status":"ok","service":"hamghadam-api","version":"0.2.0","capabilities":{"auth":false,"agent":false,"audit":false}}` |
+| آزمون دودی ۱ | `GET /api/health?probe=fra1-81a149c` → `{"status":"ok","service":"hamghadam-api","version":"0.2.0","time":"2026-10-26T05:16:21.928Z","capabilities":{"auth":false,"agent":false,"audit":false}}` |
+| آزمون دودی ۲ | `GET /api/agent` → `405 {"error":"method_not_allowed","message":"Allowed methods: POST"}` (یعنی مسیریابی و هندلرها زنده‌اند) |
 
 **چرا `index.js` اضافه شد:** پریست «Node» ورسل به یک نقطهٔ ورود سرور نیاز دارد، و پریست «Other» (که `api/*.js` را خودکار تابع می‌کند) از طریق API استقرار فقط با تأیید تعاملی انتخاب می‌شود که ابزار موجود در دسترس نیست. پس یک روتر ۳۰ خطی اضافه شد که همان دو هندلر را سرو می‌کند: هیچ منطقی دوباره‌نویسی نشد.
 
